@@ -8,7 +8,8 @@
         "data": {
           "host": "FRITZ!Box-Adresse",
           "port": "Call-Monitor-Port",
-          "answering_machine_extension": "Nebenstelle des Anrufbeantworters"
+          "answering_machine_extension": "Nebenstelle des Anrufbeantworters",
+          "max_stored_calls": "Maximal gespeicherte Anrufe"
         }
       }
     },
