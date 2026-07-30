@@ -11,3 +11,5 @@ DEFAULT_MAX_STORED_CALLS = 50
 STORAGE_VERSION = 1
 STORAGE_KEY = "callmonitor_test.calls"
 STATIC_URL = "/local_callmonitor_test"
+
+SERVICE_CLEAR_CALLS = "clear_calls"
