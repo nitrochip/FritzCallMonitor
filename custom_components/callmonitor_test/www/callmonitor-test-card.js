@@ -115,7 +115,13 @@ class CallMonitorTestCard extends HTMLElement {
           </div>
           <div class="call-content">
             <div class="caller">${this._escape(caller)}</div>
-            <div class="status">${appearance.label}</div>
+            <div class="status">
+              ${appearance.label}${
+                call.status !== "missed" && call.duration_seconds != null
+                  ? ` · ${this._escape(this._formatDuration(call.duration_seconds))}`
+                  : ""
+              }
+            </div>
             ${called}
           </div>
           <div class="time">${this._escape(this._formatDate(call.timestamp))}</div>
