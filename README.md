@@ -69,3 +69,10 @@ Die Dashboard-Karte enthält nun drei Filter:
 - `Anrufbeantworter`
 
 Angenommene Anrufe werden nur unter `Alle` angezeigt.
+
+
+## Fix in Version 0.2.4
+
+- Filter reagieren nun zuverlässig per Event-Delegation.
+- Filter erscheinen als kompakte Segment-Schaltflächen.
+- Kartenlayout wurde stärker an FRITZ!Box Calls angelehnt.
