@@ -1,0 +1,3 @@
+clear_calls:
+  name: Anrufliste löschen
+  description: Löscht alle gespeicherten eingehenden Anrufe.

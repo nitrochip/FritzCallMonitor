@@ -76,3 +76,16 @@ Angenommene Anrufe werden nur unter `Alle` angezeigt.
 - Filter reagieren nun zuverlässig per Event-Delegation.
 - Filter erscheinen als kompakte Segment-Schaltflächen.
 - Kartenlayout wurde stärker an FRITZ!Box Calls angelehnt.
+
+
+## Version 0.2.5
+
+- roter Papierkorb rechts neben den Filtern
+- löscht die vollständige gespeicherte Anrufliste
+- Löschung wird dauerhaft im Home-Assistant-Speicher übernommen
+
+
+## Anpassung v0.2.5
+
+Der Löschbutton zeigt nun `Clear all` zusammen mit dem roten
+`mdi:delete-outline`-Symbol an.

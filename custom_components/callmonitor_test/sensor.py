@@ -49,6 +49,7 @@ def parse_line(line: str) -> tuple[str, datetime, list[str]]:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     sensor = CallMonitorTestSensor(hass, entry)
     await sensor.async_initialize()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = sensor
     async_add_entities([sensor])
 
 class CallMonitorTestSensor(SensorEntity):
@@ -240,6 +241,13 @@ class CallMonitorTestSensor(SensorEntity):
             timestamp=call.started_at.isoformat(),
             duration_seconds=duration_seconds,
         ))
+        self.async_write_ha_state()
+
+    async def async_clear_calls(self) -> None:
+        """Clear the incoming-call history and persist the empty list."""
+        self._calls = []
+        self._sync_calls_attribute()
+        await self._store.async_save({"calls": []})
         self.async_write_ha_state()
 
     async def _add_completed_call(self, call: StoredCall) -> None:

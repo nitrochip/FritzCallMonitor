@@ -39,6 +39,14 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const clearButton = event.target.closest("[data-action='clear']");
+    if (clearButton && this.contains(clearButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._clearCalls();
+      return;
+    }
+
     const button = event.target.closest("[data-filter]");
     if (!button || !this.contains(button)) return;
 
@@ -50,6 +58,16 @@ class CallMonitorTestCard extends HTMLElement {
 
     this._activeFilter = filter;
     this._render();
+  }
+
+  async _clearCalls() {
+    if (!this._hass) return;
+
+    try {
+      await this._hass.callService("callmonitor_test", "clear_calls");
+    } catch (error) {
+      console.error("CallMonitor-Test: Anrufliste konnte nicht gelöscht werden.", error);
+    }
   }
 
   _filterCalls(calls) {
@@ -230,8 +248,20 @@ class CallMonitorTestCard extends HTMLElement {
       <ha-card>
         <div class="header-row">
           <div class="title">${this._escape(this.config.title)}</div>
-          <div class="filters" role="group" aria-label="Anruffilter">
-            ${filterButtons}
+          <div class="actions">
+            <div class="filters" role="group" aria-label="Anruffilter">
+              ${filterButtons}
+            </div>
+            <button
+              class="clear-button"
+              data-action="clear"
+              type="button"
+              title="Anrufliste löschen"
+              aria-label="Anrufliste löschen"
+            >
+              <span>Clear all</span>
+              <ha-icon icon="mdi:delete-outline"></ha-icon>
+            </button>
           </div>
         </div>
 
@@ -261,6 +291,13 @@ class CallMonitorTestCard extends HTMLElement {
           font-size: 1.2rem;
           font-weight: 500;
           color: var(--primary-text-color);
+        }
+
+        .actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
         }
 
         .filters {
@@ -300,6 +337,44 @@ class CallMonitorTestCard extends HTMLElement {
           color: var(--primary-color);
           background: var(--card-background-color);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+        }
+
+        .clear-button {
+          appearance: none;
+          min-height: 36px;
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 0;
+          border-radius: 999px;
+          padding: 0 10px 0 12px;
+          background: transparent;
+          color: var(--error-color, #db4437);
+          font: inherit;
+          font-size: 0.82rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition:
+            background-color 120ms ease,
+            transform 120ms ease;
+        }
+
+        .clear-button:hover {
+          background: color-mix(
+            in srgb,
+            var(--error-color, #db4437) 12%,
+            transparent
+          );
+        }
+
+        .clear-button:active {
+          transform: scale(0.94);
+        }
+
+        .clear-button ha-icon {
+          --mdc-icon-size: 22px;
         }
 
         .card-content {
@@ -381,8 +456,13 @@ class CallMonitorTestCard extends HTMLElement {
             align-items: flex-start;
           }
 
-          .filters {
+          .actions {
             width: 100%;
+          }
+
+          .filters {
+            min-width: 0;
+            flex: 1 1 auto;
             overflow-x: auto;
             justify-content: flex-start;
           }
