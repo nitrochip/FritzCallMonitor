@@ -203,6 +203,13 @@ class CallMonitorTestSensor(SensorEntity):
         if not fields:
             raise ValueError("DISCONNECT enthält zu wenige Felder")
         connection_id = fields[0]
+        duration_seconds = None
+
+        if len(fields) >= 2:
+            duration_text = fields[1].strip()
+            if duration_text.isdigit():
+                duration_seconds = int(duration_text)
+
         call = self._active_calls.pop(connection_id, None)
         if call is None:
             return

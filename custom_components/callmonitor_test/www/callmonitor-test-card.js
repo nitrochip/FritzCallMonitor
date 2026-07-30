@@ -43,6 +43,26 @@ class CallMonitorTestCard extends HTMLElement {
     };
   }
 
+  _formatDuration(value) {
+    const seconds = Number(value);
+
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return "";
+    }
+
+    if (seconds < 60) {
+      return `${Math.floor(seconds)} Sek.`;
+    }
+
+    if (seconds < 3600) {
+      return `${Math.floor(seconds / 60)} Min.`;
+    }
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours} Std. ${minutes} Min.`;
+  }
+
   _formatDate(value) {
     if (!value) return "";
     const date = new Date(value);
