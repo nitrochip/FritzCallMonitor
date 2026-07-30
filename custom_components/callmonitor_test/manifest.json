@@ -1,0 +1,11 @@
+{
+  "domain": "callmonitor_test",
+  "name": "CallMonitor-Test",
+  "version": "0.1.0",
+  "config_flow": true,
+  "single_config_entry": true,
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "requirements": [],
+  "codeowners": []
+}

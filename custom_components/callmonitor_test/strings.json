@@ -1,0 +1,22 @@
+{
+  "title": "CallMonitor-Test",
+  "config": {
+    "step": {
+      "user": {
+        "title": "CallMonitor-Test einrichten",
+        "description": "Die FRITZ!Box muss auf TCP-Port 1012 erreichbar sein.",
+        "data": {
+          "host": "FRITZ!Box-Adresse",
+          "port": "Call-Monitor-Port",
+          "answering_machine_extension": "Nebenstelle des Anrufbeantworters"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Die Verbindung zur FRITZ!Box ist fehlgeschlagen."
+    },
+    "abort": {
+      "already_configured": "Diese FRITZ!Box ist bereits eingerichtet."
+    }
+  }
+}
