@@ -7,6 +7,10 @@ class CallMonitorTestCard extends HTMLElement {
       show_called_number: false,
       ...config,
     };
+
+    if (!this._activeFilter) {
+      this._activeFilter = "all";
+    }
   }
 
   set hass(hass) {
@@ -16,6 +20,23 @@ class CallMonitorTestCard extends HTMLElement {
 
   getCardSize() {
     return Math.max(2, Math.ceil(Number(this.config?.max_calls || 10) / 2));
+  }
+
+  _setFilter(filter) {
+    this._activeFilter = filter;
+    this._render();
+  }
+
+  _filterCalls(calls) {
+    if (this._activeFilter === "missed") {
+      return calls.filter((call) => call.status === "missed");
+    }
+
+    if (this._activeFilter === "answering_machine") {
+      return calls.filter((call) => call.status === "answering_machine");
+    }
+
+    return calls;
   }
 
   _appearance(status) {
@@ -102,6 +123,24 @@ class CallMonitorTestCard extends HTMLElement {
       ? stateObj.attributes.calls
       : [];
     const visibleCalls = calls.slice(0, Math.max(1, Number(this.config.max_calls || 10)));
+    const filters = [
+      { id: "all", label: "Alle" },
+      { id: "missed", label: "Verpasst" },
+      { id: "answering_machine", label: "Anrufbeantworter" },
+    ];
+
+    const filterButtons = filters.map((filter) => `
+      <button
+        class="filter-button ${
+          this._activeFilter === filter.id ? "active" : ""
+        }"
+        data-filter="${filter.id}"
+        type="button"
+      >
+        ${filter.label}
+      </button>
+    `).join("");
+
     const rows = visibleCalls.map((call) => {
       const appearance = this._appearance(call.status);
       const caller = call.caller || "unterdrückte Rufnummer";
@@ -131,6 +170,7 @@ class CallMonitorTestCard extends HTMLElement {
     this.innerHTML = `
       <ha-card>
         <div class="card-header">${this._escape(this.config.title)}</div>
+        <div class="filter-bar">${filterButtons}</div>
         <div class="card-content">
           ${rows || '<div class="empty">Noch keine eingehenden Anrufe gespeichert.</div>'}
         </div>
