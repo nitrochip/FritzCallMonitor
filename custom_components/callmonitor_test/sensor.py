@@ -11,8 +11,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.storage import Store
 from .const import (
-    CONF_ANSWERING_MACHINE_EXTENSION, CONF_HOST, CONF_MAX_STORED_CALLS,
-    CONF_PORT, DEFAULT_MAX_STORED_CALLS, STORAGE_KEY, STORAGE_VERSION,
+    CONF_ANSWERING_MACHINE_EXTENSION,
+    CONF_HOST,
+    CONF_MAX_STORED_CALLS,
+    CONF_PORT,
+    DEFAULT_MAX_STORED_CALLS,
+    DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
 LOGGER = logging.getLogger(__name__)
 
