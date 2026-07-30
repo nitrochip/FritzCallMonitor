@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-## Version 0.2.0
+## Version 0.2.1
 
 - speichert ausschließlich eingehende Anrufe
 - ignoriert ausgehende Anrufe
@@ -41,3 +41,15 @@ show_called_number: false
 ```
 
 Die tatsächliche Entitäts-ID kann abweichen.
+
+
+## Gesprächsdauer
+
+Bei angenommenen Anrufen und vom Anrufbeantworter angenommenen Anrufen wird die
+von der FRITZ!Box übermittelte Gesprächsdauer angezeigt:
+
+- unter 60 Sekunden: `45 Sek.`
+- unter einer Stunde: `5 Min.`
+- ab einer Stunde: `1 Std. 5 Min.`
+
+Verpasste Anrufe erhalten keine Daueranzeige.
