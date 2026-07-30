@@ -30,7 +30,9 @@ class StoredCall:
     caller: str
     called: str
     timestamp: str
-    def as_dict(self) -> dict[str, str]:
+    duration_seconds: int | None = None
+
+    def as_dict(self) -> dict[str, object]:
         return asdict(self)
 
 def parse_timestamp(value: str) -> datetime:
@@ -80,7 +82,13 @@ class CallMonitorTestSensor(SensorEntity):
         self._calls = [
             StoredCall(
                 status=str(item.get("status", "")), caller=str(item.get("caller", "")),
-                called=str(item.get("called", "")), timestamp=str(item.get("timestamp", "")),
+                called=str(item.get("called", "")),
+                timestamp=str(item.get("timestamp", "")),
+                duration_seconds=(
+                    int(item["duration_seconds"])
+                    if item.get("duration_seconds") is not None
+                    else None
+                ),
             )
             for item in stored.get("calls", []) if isinstance(item, dict)
         ][:self._max_stored_calls]
@@ -226,8 +234,11 @@ class CallMonitorTestSensor(SensorEntity):
         else:
             status = "answered"
         await self._add_completed_call(StoredCall(
-            status=status, caller=call.caller or "unterdrückte Rufnummer",
-            called=call.called, timestamp=call.started_at.isoformat(),
+            status=status,
+            caller=call.caller or "unterdrückte Rufnummer",
+            called=call.called,
+            timestamp=call.started_at.isoformat(),
+            duration_seconds=duration_seconds,
         ))
         self.async_write_ha_state()
 
