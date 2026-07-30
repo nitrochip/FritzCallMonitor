@@ -96,3 +96,10 @@ Der Löschbutton zeigt nun `Clear all` zusammen mit dem roten
 Fehlerbehebung: `DOMAIN` wird nun in `sensor.py` korrekt importiert. Dadurch
 lädt die Sensorplattform wieder und die bestehende Entität wird erneut von der
 Integration bereitgestellt.
+
+
+## Version 0.2.7
+
+Fehlerbehebung: Die in `__init__.py` verwendete Konstante `PLATFORMS`
+ist wieder in `const.py` definiert. Damit kann die Integration vollständig
+importiert und die Sensorplattform geladen werden.

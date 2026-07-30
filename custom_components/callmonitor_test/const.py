@@ -1,5 +1,6 @@
 """Constants for CallMonitor-Test."""
 DOMAIN = "callmonitor_test"
+PLATFORMS = ["sensor"]
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_ANSWERING_MACHINE_EXTENSION = "answering_machine_extension"
