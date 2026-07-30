@@ -89,3 +89,10 @@ Angenommene Anrufe werden nur unter `Alle` angezeigt.
 
 Der Löschbutton zeigt nun `Clear all` zusammen mit dem roten
 `mdi:delete-outline`-Symbol an.
+
+
+## Version 0.2.6
+
+Fehlerbehebung: `DOMAIN` wird nun in `sensor.py` korrekt importiert. Dadurch
+lädt die Sensorplattform wieder und die bestehende Entität wird erneut von der
+Integration bereitgestellt.
