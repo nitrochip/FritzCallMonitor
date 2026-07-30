@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-## Version 0.2.2
+## Version 0.2.3
 
 - speichert ausschließlich eingehende Anrufe
 - ignoriert ausgehende Anrufe
@@ -58,3 +58,14 @@ Verpasste Anrufe erhalten keine Daueranzeige.
 ## Fix in 0.2.2
 
 Die Gesprächsdauer wird nun im Attribut `calls` gespeichert und in der Dashboard-Karte angezeigt.
+
+
+## Filter in Version 0.2.3
+
+Die Dashboard-Karte enthält nun drei Filter:
+
+- `Alle`
+- `Verpasst`
+- `Anrufbeantworter`
+
+Angenommene Anrufe werden nur unter `Alle` angezeigt.
