@@ -298,11 +298,13 @@ class CallMonitorTestCard extends HTMLElement {
           align-items: center;
           gap: 8px;
           min-width: 0;
+          flex: 1 1 auto;
         }
 
         .filters {
           display: inline-flex;
           align-items: center;
+          justify-content: flex-start;
           gap: 4px;
           padding: 3px;
           border-radius: 999px;
@@ -341,6 +343,7 @@ class CallMonitorTestCard extends HTMLElement {
 
         .clear-button {
           appearance: none;
+          margin-left: auto;
           min-height: 36px;
           flex: 0 0 auto;
           display: inline-flex;
@@ -458,13 +461,19 @@ class CallMonitorTestCard extends HTMLElement {
 
           .actions {
             width: 100%;
+            display: flex;
+            align-items: center;
           }
 
           .filters {
             min-width: 0;
-            flex: 1 1 auto;
+            flex: 0 1 auto;
             overflow-x: auto;
             justify-content: flex-start;
+          }
+
+          .clear-button {
+            margin-left: auto;
           }
 
           .filter-chip {
