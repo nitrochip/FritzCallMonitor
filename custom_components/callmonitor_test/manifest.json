@@ -1,11 +1,15 @@
 {
   "domain": "callmonitor_test",
   "name": "CallMonitor-Test",
-  "version": "0.2.7",
+  "version": "0.2.8",
+  "documentation": "https://github.com/nitrochip/CallMonitor-Test",
+  "issue_tracker": "https://github.com/nitrochip/CallMonitor-Test/issues",
+  "codeowners": [
+    "@nitrochip"
+  ],
   "config_flow": true,
   "single_config_entry": true,
   "integration_type": "device",
   "iot_class": "local_push",
-  "requirements": [],
-  "codeowners": []
+  "requirements": []
 }

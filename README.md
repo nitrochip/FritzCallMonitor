@@ -2,35 +2,76 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-## Version 0.2.3
+> Entwicklungsstand: **v0.2.8**
 
-- speichert ausschließlich eingehende Anrufe
-- ignoriert ausgehende Anrufe
-- unterscheidet angenommene, verpasste und vom Anrufbeantworter angenommene Anrufe
-- speichert die Historie über Home-Assistant-Neustarts hinweg
-- enthält eine eigene Dashboard-Karte
+## Funktionen
 
-## Symbole
+- verarbeitet ausschließlich eingehende Anrufe
+- ignoriert ausgehende `CALL`-Ereignisse
+- unterscheidet:
+  - angenommene Anrufe
+  - verpasste Anrufe
+  - vom Anrufbeantworter angenommene Anrufe
+- speichert die Anrufhistorie über Home-Assistant-Neustarts hinweg
+- zeigt die Gesprächsdauer bei angenommenen Anrufen an
+- enthält eine eigene Lovelace-Dashboard-Karte
+- Filter:
+  - `Alle`
+  - `Verpasst`
+  - `Anrufbeantworter`
+- `Clear all` löscht ausschließlich die gespeicherte Anrufliste
+- Filter linksbündig, `Clear all` rechtsbündig
 
-- angenommen: `mdi:phone-outline` in Grün
-- verpasst: `mdi:phone-missed-outline` in Rot
-- Anrufbeantworter: `mdi:file-phone-outline` in Blau
+## Darstellung
 
-## Installation
+| Status | Symbol | Farbe |
+|---|---|---|
+| Angenommen | `mdi:phone-outline` | Grün |
+| Verpasst | `mdi:phone-missed-outline` | Rot |
+| Anrufbeantworter | `mdi:file-phone-outline` | Blau |
 
-Das Repository über HACS als benutzerdefiniertes Repository vom Typ **Integration** installieren. Danach Home Assistant vollständig neu starten.
+### Gesprächsdauer
+
+- unter 60 Sekunden: `45 Sek.`
+- unter einer Stunde: `5 Min.`
+- ab einer Stunde: `1 Std. 5 Min.`
+
+Verpasste Anrufe erhalten keine Daueranzeige.
+
+## Voraussetzungen
+
+- Home Assistant
+- FRITZ!Box mit aktiviertem Call Monitor
+- TCP-Port `1012` muss von Home Assistant erreichbar sein
+
+Der FRITZ!Box-Call-Monitor kann bei unterstützten FRITZ!Boxen über ein angeschlossenes Telefon mit `#96*5*` aktiviert werden.
+
+## Installation mit HACS
+
+1. Dieses Repository in HACS als benutzerdefiniertes Repository vom Typ **Integration** hinzufügen.
+2. `CallMonitor-Test` installieren.
+3. Home Assistant vollständig neu starten.
+4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** `CallMonitor-Test` auswählen.
+
+Standardwerte:
+
+- Host: `192.168.178.1`
+- Port: `1012`
+- Anrufbeantworter-Nebenstelle: `40`
+- gespeicherte Anrufe: `50`
 
 ## Dashboard-Ressource
 
-Unter **Einstellungen → Dashboards → Drei Punkte → Ressourcen** hinzufügen:
+Unter **Einstellungen → Dashboards → Ressourcen** folgende Ressource als
+**JavaScript-Modul** hinzufügen:
 
 ```text
 /local_callmonitor_test/callmonitor-test-card.js
 ```
 
-Typ: **JavaScript-Modul**. Danach `Strg + F5`.
+Nach Updates der Karte den Browser gegebenenfalls mit `Strg + F5` neu laden.
 
-## Karte
+## Dashboard-Karte
 
 ```yaml
 type: custom:callmonitor-test-card
@@ -42,64 +83,50 @@ show_called_number: false
 
 Die tatsächliche Entitäts-ID kann abweichen.
 
+## Clear all
 
-## Gesprächsdauer
+`Clear all` ruft die Home-Assistant-Aktion
 
-Bei angenommenen Anrufen und vom Anrufbeantworter angenommenen Anrufen wird die
-von der FRITZ!Box übermittelte Gesprächsdauer angezeigt:
+```text
+callmonitor_test.clear_calls
+```
 
-- unter 60 Sekunden: `45 Sek.`
-- unter einer Stunde: `5 Min.`
-- ab einer Stunde: `1 Std. 5 Min.`
+auf. Dabei wird ausschließlich die gespeicherte Anrufhistorie geleert.
+Dashboard, Karte, Integration und Konfiguration bleiben erhalten.
 
-Verpasste Anrufe erhalten keine Daueranzeige.
+## Projektstruktur
 
+```text
+custom_components/
+└── callmonitor_test/
+    ├── translations/
+    │   └── de.json
+    ├── www/
+    │   └── callmonitor-test-card.js
+    ├── __init__.py
+    ├── config_flow.py
+    ├── const.py
+    ├── manifest.json
+    ├── sensor.py
+    ├── services.yaml
+    └── strings.json
+```
 
-## Fix in 0.2.2
+## Roadmap
 
-Die Gesprächsdauer wird nun im Attribut `calls` gespeichert und in der Dashboard-Karte angezeigt.
+Geplant sind unter anderem:
 
+- FRITZ!Box-Adressbuch synchronisieren und Kontaktnamen anzeigen
+- auswählbare Home-Assistant-App-Benachrichtigungen bei verpassten Anrufen
+- Anrufbeantworter ein-/ausschalten
+- AB-Nachrichten im Dashboard anzeigen, abspielen und löschen
+- einzelne Anruflisten-Einträge löschen
+- prüfen, ob ausgehende Telefonate zentral anonym geschaltet werden können
 
-## Filter in Version 0.2.3
+## Changelog
 
-Die Dashboard-Karte enthält nun drei Filter:
+Siehe [CHANGELOG.md](CHANGELOG.md).
 
-- `Alle`
-- `Verpasst`
-- `Anrufbeantworter`
+## Lizenz
 
-Angenommene Anrufe werden nur unter `Alle` angezeigt.
-
-
-## Fix in Version 0.2.4
-
-- Filter reagieren nun zuverlässig per Event-Delegation.
-- Filter erscheinen als kompakte Segment-Schaltflächen.
-- Kartenlayout wurde stärker an FRITZ!Box Calls angelehnt.
-
-
-## Version 0.2.5
-
-- roter Papierkorb rechts neben den Filtern
-- löscht die vollständige gespeicherte Anrufliste
-- Löschung wird dauerhaft im Home-Assistant-Speicher übernommen
-
-
-## Anpassung v0.2.5
-
-Der Löschbutton zeigt nun `Clear all` zusammen mit dem roten
-`mdi:delete-outline`-Symbol an.
-
-
-## Version 0.2.6
-
-Fehlerbehebung: `DOMAIN` wird nun in `sensor.py` korrekt importiert. Dadurch
-lädt die Sensorplattform wieder und die bestehende Entität wird erneut von der
-Integration bereitgestellt.
-
-
-## Version 0.2.7
-
-Fehlerbehebung: Die in `__init__.py` verwendete Konstante `PLATFORMS`
-ist wieder in `const.py` definiert. Damit kann die Integration vollständig
-importiert und die Sensorplattform geladen werden.
+MIT
