@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.2.9**
+> Entwicklungsstand: **v0.3.0**
 
 ## Funktionen
 
@@ -71,6 +71,24 @@ Unter **Einstellungen → Dashboards → Ressourcen** folgende Ressource als
 
 Nach Updates der Karte den Browser gegebenenfalls mit `Strg + F5` neu laden.
 
+
+### Darstellung der Anrufe
+
+Mit bekanntem Kontakt:
+
+```text
+Max Mustermann
+01601234567 · Heute um 21:15 · Anruf angenommen · 5 Min.
+```
+
+Ohne Kontakt:
+
+```text
+01601234567
+Heute um 21:15 · Verpasster Anruf
+```
+
+
 ## Dashboard-Karte
 
 ```yaml
@@ -126,6 +144,47 @@ callmonitor_test.sync_phonebook
 ```
 
 Beim Start der Integration wird das Telefonbuch ebenfalls synchronisiert.
+
+
+
+## Kontakte hinzufügen (ab v0.3.0)
+
+Bei einer unbekannten Rufnummer zeigt die Dashboard-Karte rechts am Anruf ein
+`mdi:account-plus-outline`-Symbol. Darüber kann die Rufnummer direkt als neuer
+Kontakt in einem FRITZ!Box-Telefonbuch gespeichert werden.
+
+Im Dialog werden angegeben:
+
+- Name des Kontakts
+- Ziel-Telefonbuch
+
+Die Rufnummer wird aus dem Anruf übernommen. Nach dem Speichern wird das
+Telefonbuch sofort erneut synchronisiert und der Kontaktname auch bei bereits
+gespeicherten passenden Anrufen ergänzt.
+
+Alternativ kann die Aktion manuell verwendet werden:
+
+```yaml
+action: callmonitor_test.add_contact
+data:
+  name: Max Mustermann
+  number: "01601234567"
+  phonebook_id: 0
+```
+
+Das Schreiben erfolgt über den FRITZ!Box-TR-064-Dienst
+`X_AVM-DE_OnTel` / `SetPhonebookEntryUID`.
+
+### Automatische Telefonbuch-Synchronisierung
+
+Das Telefonbuch wird jetzt:
+
+- beim Start von FritzCallMonitor
+- nach dem Hinzufügen eines Kontakts
+- manuell über `callmonitor_test.sync_phonebook`
+- automatisch alle **6 Stunden**
+
+neu von der FRITZ!Box abgerufen.
 
 
 ## Clear all

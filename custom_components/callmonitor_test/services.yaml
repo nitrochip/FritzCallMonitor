@@ -6,3 +6,32 @@ sync_phonebook:
   name: Telefonbuch synchronisieren
   description: Liest alle konfigurierten FRITZ!Box-Telefonbücher neu ein.
 
+add_contact:
+  name: Kontakt hinzufügen
+  description: Fügt eine Rufnummer als neuen Kontakt in ein FRITZ!Box-Telefonbuch ein.
+  fields:
+    name:
+      name: Name
+      description: Name des neuen Kontakts.
+      required: true
+      example: Max Mustermann
+      selector:
+        text:
+    number:
+      name: Rufnummer
+      description: Rufnummer des neuen Kontakts.
+      required: true
+      example: "01601234567"
+      selector:
+        text:
+    phonebook_id:
+      name: Telefonbuch-ID
+      description: ID des Ziel-Telefonbuchs.
+      required: true
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+          mode: box
+

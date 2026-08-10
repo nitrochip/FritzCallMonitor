@@ -2,6 +2,17 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.0] - 2026-08-10
+
+### Added
+- Unbekannte Anrufer direkt aus der Dashboard-Karte als FRITZ!Box-Kontakt anlegen.
+- Ziel-Telefonbuch im Kontakt-Dialog auswählen.
+- Aktion `callmonitor_test.add_contact`.
+- Automatische Telefonbuch-Synchronisierung alle 6 Stunden.
+
+### Changed
+- Kompakte zweizeilige Anrufdarstellung: Name oben, Rufnummer/Zeit/Status/Dauer darunter.
+
 ## [0.2.9] - 2026-08-10
 
 ### Added

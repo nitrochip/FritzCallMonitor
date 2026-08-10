@@ -39,6 +39,34 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const addButton = event.target.closest("[data-action='add-contact']");
+    if (addButton && this.contains(addButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._contactDraft = {
+        number: addButton.dataset.number || "",
+      };
+      this._contactError = "";
+      this._render();
+      return;
+    }
+
+    const cancelButton = event.target.closest("[data-action='cancel-contact']");
+    if (cancelButton && this.contains(cancelButton)) {
+      event.preventDefault();
+      this._contactDraft = null;
+      this._contactError = "";
+      this._render();
+      return;
+    }
+
+    const saveButton = event.target.closest("[data-action='save-contact']");
+    if (saveButton && this.contains(saveButton)) {
+      event.preventDefault();
+      this._saveContact();
+      return;
+    }
+
     const clearButton = event.target.closest("[data-action='clear']");
     if (clearButton && this.contains(clearButton)) {
       event.preventDefault();
@@ -60,14 +88,40 @@ class CallMonitorTestCard extends HTMLElement {
     this._render();
   }
 
-  async _clearCalls() {
-    if (!this._hass) return;
+  async _saveContact() {
+    const nameInput = this.querySelector("#fcm-contact-name");
+    const phonebookSelect = this.querySelector("#fcm-phonebook");
+    if (!nameInput || !phonebookSelect || !this._contactDraft) return;
+
+    const name = nameInput.value.trim();
+    const phonebookId = Number(phonebookSelect.value);
+
+    if (!name) {
+      this._contactError = "Bitte einen Namen eingeben.";
+      this._render();
+      return;
+    }
+
+    this._contactSaving = true;
+    this._contactError = "";
+    this._render();
 
     try {
-      await this._hass.callService("callmonitor_test", "clear_calls");
+      await this._hass.callService("callmonitor_test", "add_contact", {
+        name,
+        number: this._contactDraft.number,
+        phonebook_id: phonebookId,
+      });
+      this._contactDraft = null;
+      this._contactSaving = false;
+      this._contactError = "";
     } catch (error) {
-      console.error("FritzCallMonitor: Anrufliste konnte nicht gelöscht werden.", error);
+      console.error("FritzCallMonitor: Kontakt konnte nicht angelegt werden.", error);
+      this._contactSaving = false;
+      this._contactError = "Kontakt konnte nicht gespeichert werden.";
     }
+
+    this._render();
   }
 
   _filterCalls(calls) {
@@ -205,6 +259,10 @@ class CallMonitorTestCard extends HTMLElement {
       )
       .join("");
 
+    const phonebooks = Array.isArray(stateObj?.attributes?.telefonbuch_liste)
+      ? stateObj.attributes.telefonbuch_liste
+      : [];
+
     const rows = visibleCalls
       .map((call) => {
         const appearance = this._appearance(call.status);
@@ -216,6 +274,17 @@ class CallMonitorTestCard extends HTMLElement {
                 this._formatDuration(call.duration_seconds)
               )}`
             : "";
+
+        const dateText = this._escape(this._formatDate(call.timestamp));
+        const secondLine = callerName
+          ? `${this._escape(caller)} · ${dateText} · ${appearance.label}${duration}`
+          : `${dateText} · ${appearance.label}${duration}`;
+
+        const canAddContact =
+          !callerName &&
+          caller &&
+          caller !== "unterdrückte Rufnummer" &&
+          phonebooks.length > 0;
 
         const calledNumber =
           this.config.show_called_number && call.called
@@ -231,26 +300,99 @@ class CallMonitorTestCard extends HTMLElement {
             </div>
 
             <div class="call-main">
-              <div class="caller">${
-                callerName ? this._escape(callerName) : this._escape(caller)
-              }</div>
-              ${
-                callerName
-                  ? `<div class="number">${this._escape(caller)}</div>`
-                  : ""
-              }
-              <div class="meta">
-                <span>${this._escape(this._formatDate(call.timestamp))}</span>
-              </div>
-              <div class="status">
-                ${appearance.label}${duration}
-              </div>
+              <div class="caller">${this._escape(
+                callerName || caller
+              )}</div>
+              <div class="call-details">${secondLine}</div>
               ${calledNumber}
             </div>
+
+            ${
+              canAddContact
+                ? `
+                  <button
+                    class="row-action"
+                    data-action="add-contact"
+                    data-number="${this._escape(caller)}"
+                    type="button"
+                    title="Kontakt hinzufügen"
+                    aria-label="Kontakt hinzufügen"
+                  >
+                    <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                  </button>
+                `
+                : ""
+            }
           </div>
         `;
       })
       .join("");
+
+    const phonebookOptions = phonebooks
+      .map(
+        (book) =>
+          `<option value="${Number(book.id)}">${this._escape(book.name)}</option>`
+      )
+      .join("");
+
+    const contactDialog = this._contactDraft
+      ? `
+        <div class="modal-backdrop">
+          <div class="contact-dialog" role="dialog" aria-modal="true">
+            <div class="dialog-title">Kontakt hinzufügen</div>
+            <div class="dialog-number">${this._escape(
+              this._contactDraft.number
+            )}</div>
+
+            <label class="field-label" for="fcm-contact-name">Name</label>
+            <input
+              id="fcm-contact-name"
+              class="dialog-input"
+              type="text"
+              autocomplete="name"
+              placeholder="Max Mustermann"
+              ${this._contactSaving ? "disabled" : ""}
+            />
+
+            <label class="field-label" for="fcm-phonebook">Telefonbuch</label>
+            <select
+              id="fcm-phonebook"
+              class="dialog-input"
+              ${this._contactSaving ? "disabled" : ""}
+            >
+              ${phonebookOptions}
+            </select>
+
+            ${
+              this._contactError
+                ? `<div class="dialog-error">${this._escape(
+                    this._contactError
+                  )}</div>`
+                : ""
+            }
+
+            <div class="dialog-actions">
+              <button
+                class="dialog-button"
+                data-action="cancel-contact"
+                type="button"
+                ${this._contactSaving ? "disabled" : ""}
+              >
+                Abbrechen
+              </button>
+              <button
+                class="dialog-button primary"
+                data-action="save-contact"
+                type="button"
+                ${this._contactSaving ? "disabled" : ""}
+              >
+                ${this._contactSaving ? "Speichere…" : "Speichern"}
+              </button>
+            </div>
+          </div>
+        </div>
+      `
+      : "";
 
     this.innerHTML = `
       <ha-card>
@@ -280,6 +422,7 @@ class CallMonitorTestCard extends HTMLElement {
           }
         </div>
       </ha-card>
+      ${contactDialog}
 
       <style>
         ha-card {
@@ -394,7 +537,7 @@ class CallMonitorTestCard extends HTMLElement {
 
         .call-row {
           display: grid;
-          grid-template-columns: 42px minmax(0, 1fr);
+          grid-template-columns: 42px minmax(0, 1fr) auto;
           gap: 12px;
           align-items: start;
           padding: 13px 0;
@@ -437,30 +580,128 @@ class CallMonitorTestCard extends HTMLElement {
           white-space: nowrap;
         }
 
-        .number,
-        .meta,
-        .status,
+        .call-details,
         .called,
         .empty {
           color: var(--secondary-text-color);
           font-size: 0.88rem;
         }
 
-        .number {
-          margin-top: 1px;
-        }
-
-        .meta {
-          margin-top: 2px;
-        }
-
-        .status {
-          margin-top: 5px;
-          color: var(--primary-text-color);
-        }
-
         .called {
           margin-top: 3px;
+        }
+
+
+        .call-details {
+          margin-top: 3px;
+          line-height: 1.35;
+        }
+
+        .row-action {
+          appearance: none;
+          border: 0;
+          background: transparent;
+          color: var(--primary-color);
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          align-self: center;
+        }
+
+        .row-action:hover {
+          background: var(--secondary-background-color);
+        }
+
+        .row-action ha-icon {
+          --mdc-icon-size: 21px;
+        }
+
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(0, 0, 0, 0.45);
+        }
+
+        .contact-dialog {
+          width: min(420px, calc(100vw - 40px));
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .dialog-title {
+          font-size: 1.2rem;
+          font-weight: 600;
+        }
+
+        .dialog-number {
+          color: var(--secondary-text-color);
+          margin: 4px 0 18px;
+        }
+
+        .field-label {
+          display: block;
+          font-size: 0.85rem;
+          color: var(--secondary-text-color);
+          margin: 12px 0 5px;
+        }
+
+        .dialog-input {
+          box-sizing: border-box;
+          width: 100%;
+          min-height: 42px;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          padding: 8px 10px;
+          background: var(--primary-background-color);
+          color: var(--primary-text-color);
+          font: inherit;
+        }
+
+        .dialog-error {
+          margin-top: 12px;
+          color: var(--error-color, #db4437);
+          font-size: 0.88rem;
+        }
+
+        .dialog-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          margin-top: 20px;
+        }
+
+        .dialog-button {
+          appearance: none;
+          border: 0;
+          border-radius: 999px;
+          padding: 9px 15px;
+          background: var(--secondary-background-color);
+          color: var(--primary-text-color);
+          font: inherit;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .dialog-button.primary {
+          background: var(--primary-color);
+          color: var(--text-primary-color, #fff);
+        }
+
+        .dialog-button:disabled {
+          opacity: 0.55;
+          cursor: default;
         }
 
         .empty {

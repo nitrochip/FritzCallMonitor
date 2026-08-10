@@ -2,13 +2,14 @@
 from __future__ import annotations
 import asyncio
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from .phonebook import FritzPhonebookManager
 from .const import (
@@ -22,6 +23,7 @@ from .const import (
     DEFAULT_COUNTRY_CODE,
     DEFAULT_MAX_STORED_CALLS,
     DOMAIN,
+    PHONEBOOK_SYNC_HOURS,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -94,12 +96,15 @@ class CallMonitorTestSensor(SensorEntity):
             "telefonbuch_status": "nicht konfiguriert",
             "telefonbuch_kontakte": 0,
             "telefonbuch_anzahl": 0,
+            "telefonbuch_liste": [],
+            "telefonbuch_sync_intervall_stunden": PHONEBOOK_SYNC_HOURS,
             "calls": [],
         }
         self._active_calls: dict[str, ActiveCall] = {}
         self._calls: list[StoredCall] = []
         self._task: asyncio.Task | None = None
         self._writer: asyncio.StreamWriter | None = None
+        self._phonebook_unsub = None
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def async_initialize(self) -> None:
@@ -129,6 +134,7 @@ class CallMonitorTestSensor(SensorEntity):
                 self._attributes["telefonbuch_status"] = "verbunden"
                 self._attributes["telefonbuch_kontakte"] = self._phonebook.contact_count
                 self._attributes["telefonbuch_anzahl"] = self._phonebook.phonebook_count
+                self._attributes["telefonbuch_liste"] = self._phonebook.phonebooks
                 if self._phonebook.last_sync is not None:
                     self._attributes["telefonbuch_letzte_synchronisierung"] = (
                         self._phonebook.last_sync.isoformat()
@@ -163,7 +169,20 @@ class CallMonitorTestSensor(SensorEntity):
         return self._attributes
 
     async def async_added_to_hass(self) -> None:
-        self._task = self.hass.async_create_task(self._monitor(), "FritzCallMonitor TCP listener")
+        self._task = self.hass.async_create_task(
+            self._monitor(),
+            "FritzCallMonitor TCP listener",
+        )
+
+        if self._phonebook.enabled:
+            async def _scheduled_sync(now) -> None:
+                await self.async_sync_phonebook()
+
+            self._phonebook_unsub = async_track_time_interval(
+                self.hass,
+                _scheduled_sync,
+                timedelta(hours=PHONEBOOK_SYNC_HOURS),
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         if self._writer is not None:
@@ -324,6 +343,7 @@ class CallMonitorTestSensor(SensorEntity):
             self._attributes["telefonbuch_status"] = "verbunden"
             self._attributes["telefonbuch_kontakte"] = self._phonebook.contact_count
             self._attributes["telefonbuch_anzahl"] = self._phonebook.phonebook_count
+            self._attributes["telefonbuch_liste"] = self._phonebook.phonebooks
             if self._phonebook.last_sync is not None:
                 self._attributes["telefonbuch_letzte_synchronisierung"] = (
                     self._phonebook.last_sync.isoformat()
@@ -347,6 +367,45 @@ class CallMonitorTestSensor(SensorEntity):
             LOGGER.warning("Telefonbuch konnte nicht synchronisiert werden: %s", error)
             self._attributes["telefonbuch_status"] = "Fehler"
 
+        self.async_write_ha_state()
+
+    async def async_add_contact(
+        self,
+        name: str,
+        number: str,
+        phonebook_id: int,
+    ) -> None:
+        """Add a contact to a FRITZ!Box phonebook and update stored calls."""
+        await self._phonebook.async_add_contact(
+            name=name,
+            number=number,
+            phonebook_id=phonebook_id,
+        )
+
+        self._attributes["telefonbuch_status"] = "verbunden"
+        self._attributes["telefonbuch_kontakte"] = self._phonebook.contact_count
+        self._attributes["telefonbuch_anzahl"] = self._phonebook.phonebook_count
+        self._attributes["telefonbuch_liste"] = self._phonebook.phonebooks
+
+        if self._phonebook.last_sync is not None:
+            self._attributes["telefonbuch_letzte_synchronisierung"] = (
+                self._phonebook.last_sync.isoformat()
+            )
+
+        changed = False
+        for call in self._calls:
+            contact = self._phonebook.lookup(call.caller)
+            new_name = contact.name if contact is not None else None
+            if call.caller_name != new_name:
+                call.caller_name = new_name
+                changed = True
+
+        if changed:
+            await self._store.async_save(
+                {"calls": [item.as_dict() for item in self._calls]}
+            )
+
+        self._sync_calls_attribute()
         self.async_write_ha_state()
 
     async def async_clear_calls(self) -> None:
