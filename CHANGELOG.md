@@ -2,6 +2,14 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.1] - 2026-08-10
+
+### Fixed
+- Beim Start-Sync werden gespeicherte Anrufe vollständig gegen das aktuelle
+  FRITZ!Box-Telefonbuch abgeglichen.
+- Gelöschte Kontakte entfernen nun auch einen zuvor gespeicherten `caller_name`.
+- Umbenannte Kontakte werden zuverlässig aktualisiert.
+
 ## [0.3.0] - 2026-08-10
 
 ### Added

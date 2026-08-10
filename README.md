@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.0**
+> Entwicklungsstand: **v0.3.1**
 
 ## Funktionen
 
@@ -295,3 +295,13 @@ Siehe [CHANGELOG.md](CHANGELOG.md).
 ## Lizenz
 
 MIT
+
+
+## Hinweis zu v0.3.1
+
+Beim Telefonbuch-Sync werden jetzt alle bereits gespeicherten Anrufe vollständig
+neu abgeglichen:
+
+- neue Kontakte werden ergänzt
+- umbenannte Kontakte werden aktualisiert
+- gelöschte Kontakte werden aus alten Anrufeinträgen wieder entfernt

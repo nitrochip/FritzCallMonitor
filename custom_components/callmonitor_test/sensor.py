@@ -141,11 +141,10 @@ class CallMonitorTestSensor(SensorEntity):
                     )
                 changed = False
                 for call in self._calls:
-                    if call.caller_name:
-                        continue
                     contact = self._phonebook.lookup(call.caller)
-                    if contact is not None:
-                        call.caller_name = contact.name
+                    new_name = contact.name if contact is not None else None
+                    if call.caller_name != new_name:
+                        call.caller_name = new_name
                         changed = True
                 if changed:
                     await self._store.async_save(
