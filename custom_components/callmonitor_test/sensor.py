@@ -1,4 +1,4 @@
-"""Sensor platform for CallMonitor-Test."""
+"""Sensor platform for FritzCallMonitor."""
 from __future__ import annotations
 import asyncio
 from dataclasses import asdict, dataclass
@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities([sensor])
 
 class CallMonitorTestSensor(SensorEntity):
-    _attr_name = "CallMonitor-Test Anrufstatus"
+    _attr_name = "FritzCallMonitor Anrufstatus"
     _attr_unique_id = "callmonitor_test_status"
     _attr_icon = "mdi:phone"
     _attr_should_poll = False
@@ -114,7 +114,7 @@ class CallMonitorTestSensor(SensorEntity):
         return self._attributes
 
     async def async_added_to_hass(self) -> None:
-        self._task = self.hass.async_create_task(self._monitor(), "CallMonitor-Test TCP listener")
+        self._task = self.hass.async_create_task(self._monitor(), "FritzCallMonitor TCP listener")
 
     async def async_will_remove_from_hass(self) -> None:
         if self._writer is not None:
@@ -154,7 +154,7 @@ class CallMonitorTestSensor(SensorEntity):
             except asyncio.CancelledError:
                 raise
             except (OSError, ConnectionError) as error:
-                LOGGER.warning("CallMonitor-Test Verbindung unterbrochen: %s", error)
+                LOGGER.warning("FritzCallMonitor Verbindung unterbrochen: %s", error)
                 self._available = False
                 self._attributes["verbindungsstatus"] = "getrennt"
                 self.async_write_ha_state()

@@ -1,9 +1,9 @@
 {
-  "title": "CallMonitor-Test",
+  "title": "FritzCallMonitor",
   "config": {
     "step": {
       "user": {
-        "title": "CallMonitor-Test einrichten",
+        "title": "FritzCallMonitor einrichten",
         "description": "Die FRITZ!Box muss auf TCP-Port 1012 erreichbar sein.",
         "data": {
           "host": "FRITZ!Box-Adresse",

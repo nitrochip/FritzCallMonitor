@@ -66,7 +66,7 @@ class CallMonitorTestCard extends HTMLElement {
     try {
       await this._hass.callService("callmonitor_test", "clear_calls");
     } catch (error) {
-      console.error("CallMonitor-Test: Anrufliste konnte nicht gelöscht werden.", error);
+      console.error("FritzCallMonitor: Anrufliste konnte nicht gelöscht werden.", error);
     }
   }
 
@@ -492,7 +492,7 @@ if (!customElements.get("callmonitor-test-card")) {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "callmonitor-test-card",
-  name: "CallMonitor-Test Card",
+  name: "FritzCallMonitor Card",
   description: "Zeigt eingehende FRITZ!Box-Anrufe mit Filtern an.",
   preview: false,
 });

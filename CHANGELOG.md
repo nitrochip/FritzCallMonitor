@@ -1,6 +1,6 @@
 # Changelog
 
-Alle wesentlichen Änderungen an CallMonitor-Test werden hier dokumentiert.
+Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
 ## [0.2.8] - 2026-08-10
 

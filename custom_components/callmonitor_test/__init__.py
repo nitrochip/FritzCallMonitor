@@ -1,4 +1,4 @@
-"""CallMonitor-Test integration."""
+"""FritzCallMonitor integration."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> bool:
-    """Set up CallMonitor-Test from a config entry."""
+    """Set up FritzCallMonitor from a config entry."""
 
     www_path = Path(__file__).parent / "www"
 
@@ -52,7 +52,7 @@ async def async_unload_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> bool:
-    """Unload CallMonitor-Test."""
+    """Unload FritzCallMonitor."""
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry,
         PLATFORMS,

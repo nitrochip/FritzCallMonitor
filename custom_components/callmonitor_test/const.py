@@ -1,4 +1,4 @@
-"""Constants for CallMonitor-Test."""
+"""Constants for FritzCallMonitor."""
 DOMAIN = "callmonitor_test"
 PLATFORMS = ["sensor"]
 CONF_HOST = "host"

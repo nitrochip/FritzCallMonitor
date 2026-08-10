@@ -1,4 +1,4 @@
-# CallMonitor-Test
+# FritzCallMonitor
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
@@ -49,9 +49,9 @@ Der FRITZ!Box-Call-Monitor kann bei unterstützten FRITZ!Boxen über ein angesch
 ## Installation mit HACS
 
 1. Dieses Repository in HACS als benutzerdefiniertes Repository vom Typ **Integration** hinzufügen.
-2. `CallMonitor-Test` installieren.
+2. `FritzCallMonitor` installieren.
 3. Home Assistant vollständig neu starten.
-4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** `CallMonitor-Test` auswählen.
+4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** `FritzCallMonitor` auswählen.
 
 Standardwerte:
 
