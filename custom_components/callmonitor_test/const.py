@@ -14,3 +14,9 @@ STORAGE_KEY = "callmonitor_test.calls"
 STATIC_URL = "/local_callmonitor_test"
 
 SERVICE_CLEAR_CALLS = "clear_calls"
+
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
+CONF_COUNTRY_CODE = "country_code"
+DEFAULT_COUNTRY_CODE = "49"
+SERVICE_SYNC_PHONEBOOK = "sync_phonebook"

@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.2.8**
+> Entwicklungsstand: **v0.2.9**
 
 ## Funktionen
 
@@ -83,6 +83,51 @@ show_called_number: false
 
 Die tatsächliche Entitäts-ID kann abweichen.
 
+
+## Telefonbuch (ab v0.2.9)
+
+FritzCallMonitor kann alle Telefonbücher der FRITZ!Box über TR-064 einlesen und
+eingehende Rufnummern mit den Kontakten abgleichen.
+
+Für die Telefonbuchfunktion wird ein FRITZ!Box-Benutzer mit Kennwort und dem
+Berechtigungsrecht **Phone / Telefonie** benötigt. Bestehende Installationen
+können die Zugangsdaten über **Neu konfigurieren** an der Integration ergänzen.
+
+Die Rufnummern werden vor dem Vergleich normalisiert. Bei Ländervorwahl `49`
+werden unter anderem diese Schreibweisen als identisch behandelt:
+
+```text
+0160 1234567
++49 160 1234567
+0049 160 1234567
+49 160 1234567
+```
+
+Auch Leerzeichen, Bindestriche, Schrägstriche und Klammern werden beim Vergleich
+ignoriert.
+
+Bei einem Treffer zeigt das Dashboard beispielsweise:
+
+```text
+Max Mustermann
+0160 1234567
+Heute um 20:42
+Verpasster Anruf
+```
+
+Ohne Treffer wird weiterhin nur die Rufnummer dargestellt.
+
+### Telefonbuch manuell synchronisieren
+
+Über **Entwicklerwerkzeuge → Aktionen** kann ausgeführt werden:
+
+```text
+callmonitor_test.sync_phonebook
+```
+
+Beim Start der Integration wird das Telefonbuch ebenfalls synchronisiert.
+
+
 ## Clear all
 
 `Clear all` ruft die Home-Assistant-Aktion
@@ -111,6 +156,67 @@ custom_components/
     ├── services.yaml
     └── strings.json
 ```
+
+
+## Benachrichtigungs-Automation
+
+Beispiel für eine gemeinsame Automation. Die Benachrichtigung bei verpassten
+Anrufen funktioniert bereits. Der Trigger `Neue AB-Nachricht` ist für die
+geplante AB-Nachrichtenfunktion vorbereitet und funktioniert erst, sobald diese
+Funktion in FritzCallMonitor umgesetzt ist.
+
+```yaml
+alias: FritzCallMonitor - Benachrichtigungen
+description: Benachrichtigt bei verpasstem Anruf oder neuer AB-Nachricht
+triggers:
+  - trigger: state
+    entity_id: sensor.fritzcallmonitor_anrufstatus
+    to: "Verpasster Anruf"
+    id: missed
+
+  - trigger: state
+    entity_id: sensor.fritzcallmonitor_anrufstatus
+    to: "Neue AB-Nachricht"
+    id: answering_machine
+
+conditions: []
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: missed
+        sequence:
+          - action: notify.mobile_app_handy_chris
+            data:
+              title: "📞 Verpasster Anruf"
+              message: >
+                Verpasster Anruf von
+                {{ state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer_name')
+                   or state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer') }}
+                um
+                {{ as_timestamp(
+                     state_attr('sensor.fritzcallmonitor_anrufstatus', 'zeitpunkt')
+                   ) | timestamp_custom('%H:%M', true) }} Uhr.
+
+      - conditions:
+          - condition: trigger
+            id: answering_machine
+        sequence:
+          - action: notify.mobile_app_handy_chris
+            data:
+              title: "📨 Neue AB-Nachricht"
+              message: >
+                Neue Nachricht von
+                {{ state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer_name')
+                   or state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer') }}.
+
+mode: queued
+```
+
+`notify.mobile_app_handy_chris` muss an die eigene Mobile-App-Notify-Entität
+angepasst werden.
+
 
 ## Roadmap
 

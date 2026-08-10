@@ -8,7 +8,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DOMAIN, PLATFORMS, SERVICE_CLEAR_CALLS, STATIC_URL
+from .const import DOMAIN, PLATFORMS, SERVICE_CLEAR_CALLS, SERVICE_SYNC_PHONEBOOK, STATIC_URL
 
 
 async def async_setup_entry(
@@ -37,11 +37,24 @@ async def async_setup_entry(
         if sensor is not None:
             await sensor.async_clear_calls()
 
+    async def async_sync_phonebook(call: ServiceCall) -> None:
+        """Synchronize FRITZ!Box phonebooks."""
+        sensor = hass.data[DOMAIN].get(entry.entry_id)
+        if sensor is not None:
+            await sensor.async_sync_phonebook()
+
     if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_CALLS):
         hass.services.async_register(
             DOMAIN,
             SERVICE_CLEAR_CALLS,
             async_clear_calls,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SYNC_PHONEBOOK):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SYNC_PHONEBOOK,
+            async_sync_phonebook,
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -63,5 +76,7 @@ async def async_unload_entry(
 
         if hass.services.has_service(DOMAIN, SERVICE_CLEAR_CALLS):
             hass.services.async_remove(DOMAIN, SERVICE_CLEAR_CALLS)
+        if hass.services.has_service(DOMAIN, SERVICE_SYNC_PHONEBOOK):
+            hass.services.async_remove(DOMAIN, SERVICE_SYNC_PHONEBOOK)
 
     return unload_ok

@@ -4,17 +4,35 @@
     "step": {
       "user": {
         "title": "FritzCallMonitor einrichten",
-        "description": "Die FRITZ!Box muss auf TCP-Port 1012 erreichbar sein.",
+        "description": "Call Monitor über Port 1012. FRITZ!Box-Benutzer und Kennwort sind optional und werden für die Telefonbuchfunktion benötigt.",
         "data": {
           "host": "FRITZ!Box-Adresse",
           "port": "Call-Monitor-Port",
           "answering_machine_extension": "Nebenstelle des Anrufbeantworters",
-          "max_stored_calls": "Maximal gespeicherte Anrufe"
+          "max_stored_calls": "Maximal gespeicherte Anrufe",
+          "username": "FRITZ!Box-Benutzer (optional)",
+          "password": "FRITZ!Box-Kennwort (optional)",
+          "country_code": "Ländervorwahl für Rufnummernabgleich"
+        }
+      },
+      "reconfigure": {
+        "title": "FritzCallMonitor neu konfigurieren",
+        "description": "Hier können insbesondere die Zugangsdaten für die FRITZ!Box-Telefonbücher hinterlegt werden. Ein leeres Kennwort behält ein bereits gespeichertes Kennwort bei.",
+        "data": {
+          "host": "FRITZ!Box-Adresse",
+          "port": "Call-Monitor-Port",
+          "answering_machine_extension": "Nebenstelle des Anrufbeantworters",
+          "max_stored_calls": "Maximal gespeicherte Anrufe",
+          "username": "FRITZ!Box-Benutzer",
+          "password": "FRITZ!Box-Kennwort",
+          "country_code": "Ländervorwahl für Rufnummernabgleich"
         }
       }
     },
     "error": {
-      "cannot_connect": "Die Verbindung zur FRITZ!Box ist fehlgeschlagen."
+      "cannot_connect": "Die Verbindung zur FRITZ!Box ist fehlgeschlagen.",
+      "cannot_connect_phonebook": "Telefonbuchzugriff fehlgeschlagen. Benutzer, Kennwort und FRITZ!Box-Berechtigungen prüfen.",
+      "phonebook_credentials_incomplete": "Für das Telefonbuch müssen Benutzername und Kennwort gemeinsam angegeben werden."
     },
     "abort": {
       "already_configured": "Diese FRITZ!Box ist bereits eingerichtet."

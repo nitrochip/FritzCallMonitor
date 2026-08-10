@@ -2,6 +2,16 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.2.9] - 2026-08-10
+
+### Added
+- FRITZ!Box-Telefonbücher über TR-064 einlesen.
+- Rufnummern-Normalisierung für nationale und internationale Schreibweisen.
+- Kontaktnamen im Dashboard zusätzlich zur Rufnummer anzeigen.
+- Manuelle Aktion `callmonitor_test.sync_phonebook`.
+- Reconfigure-Flow für FRITZ!Box-Zugangsdaten.
+- Benachrichtigungsbeispiel in der README.
+
 ## [0.2.8] - 2026-08-10
 
 ### Changed

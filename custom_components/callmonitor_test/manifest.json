@@ -1,7 +1,7 @@
 {
   "domain": "callmonitor_test",
   "name": "FritzCallMonitor",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "documentation": "https://github.com/nitrochip/FritzCallMonitor",
   "issue_tracker": "https://github.com/nitrochip/FritzCallMonitor/issues",
   "codeowners": [
@@ -11,5 +11,7 @@
   "single_config_entry": true,
   "integration_type": "device",
   "iot_class": "local_push",
-  "requirements": []
+  "requirements": [
+    "fritzconnection==1.15.1"
+  ]
 }

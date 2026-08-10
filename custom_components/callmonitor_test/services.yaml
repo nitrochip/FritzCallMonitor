@@ -1,3 +1,8 @@
 clear_calls:
   name: Anrufliste löschen
   description: Löscht alle gespeicherten eingehenden Anrufe.
+
+sync_phonebook:
+  name: Telefonbuch synchronisieren
+  description: Liest alle konfigurierten FRITZ!Box-Telefonbücher neu ein.
+

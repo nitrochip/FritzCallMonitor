@@ -10,11 +10,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.storage import Store
+from .phonebook import FritzPhonebookManager
 from .const import (
     CONF_ANSWERING_MACHINE_EXTENSION,
     CONF_HOST,
     CONF_MAX_STORED_CALLS,
     CONF_PORT,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_COUNTRY_CODE,
+    DEFAULT_COUNTRY_CODE,
     DEFAULT_MAX_STORED_CALLS,
     DOMAIN,
     STORAGE_KEY,
@@ -27,6 +32,7 @@ class ActiveCall:
     caller: str
     called: str
     started_at: datetime
+    caller_name: str | None = None
     connected: bool = False
     answered_by_answering_machine: bool = False
 
@@ -37,6 +43,7 @@ class StoredCall:
     called: str
     timestamp: str
     duration_seconds: int | None = None
+    caller_name: str | None = None
 
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -70,12 +77,23 @@ class CallMonitorTestSensor(SensorEntity):
         self._port = entry.data[CONF_PORT]
         self._answering_machine_extension = entry.data[CONF_ANSWERING_MACHINE_EXTENSION]
         self._max_stored_calls = entry.data.get(CONF_MAX_STORED_CALLS, DEFAULT_MAX_STORED_CALLS)
+        self._country_code = entry.data.get(CONF_COUNTRY_CODE, DEFAULT_COUNTRY_CODE)
+        self._phonebook = FritzPhonebookManager(
+            hass=hass,
+            host=self._host,
+            username=entry.data.get(CONF_USERNAME, ""),
+            password=entry.data.get(CONF_PASSWORD, ""),
+            country_code=self._country_code,
+        )
         self._state = "Bereit"
         self._available = False
         self._attributes: dict[str, Any] = {
             "host": self._host,
             "port": self._port,
             "anrufbeantworter_nebenstelle": self._answering_machine_extension,
+            "telefonbuch_status": "nicht konfiguriert",
+            "telefonbuch_kontakte": 0,
+            "telefonbuch_anzahl": 0,
             "calls": [],
         }
         self._active_calls: dict[str, ActiveCall] = {}
@@ -96,9 +114,40 @@ class CallMonitorTestSensor(SensorEntity):
                     if item.get("duration_seconds") is not None
                     else None
                 ),
+                caller_name=(
+                    str(item["caller_name"])
+                    if item.get("caller_name")
+                    else None
+                ),
             )
             for item in stored.get("calls", []) if isinstance(item, dict)
         ][:self._max_stored_calls]
+        if self._phonebook.enabled:
+            self._attributes["telefonbuch_status"] = "synchronisiere"
+            try:
+                await self._phonebook.async_sync()
+                self._attributes["telefonbuch_status"] = "verbunden"
+                self._attributes["telefonbuch_kontakte"] = self._phonebook.contact_count
+                self._attributes["telefonbuch_anzahl"] = self._phonebook.phonebook_count
+                if self._phonebook.last_sync is not None:
+                    self._attributes["telefonbuch_letzte_synchronisierung"] = (
+                        self._phonebook.last_sync.isoformat()
+                    )
+                changed = False
+                for call in self._calls:
+                    if call.caller_name:
+                        continue
+                    contact = self._phonebook.lookup(call.caller)
+                    if contact is not None:
+                        call.caller_name = contact.name
+                        changed = True
+                if changed:
+                    await self._store.async_save(
+                        {"calls": [item.as_dict() for item in self._calls]}
+                    )
+            except Exception as error:
+                LOGGER.warning("Telefonbuch konnte nicht synchronisiert werden: %s", error)
+                self._attributes["telefonbuch_status"] = "Fehler"
         self._sync_calls_attribute()
 
     @property
@@ -182,10 +231,18 @@ class CallMonitorTestSensor(SensorEntity):
         if len(fields) < 4:
             raise ValueError("RING enthält zu wenige Felder")
         connection_id, caller, called, line = fields[:4]
-        self._active_calls[connection_id] = ActiveCall(caller, called, timestamp)
+        contact = self._phonebook.lookup(caller)
+        caller_name = contact.name if contact is not None else None
+        self._active_calls[connection_id] = ActiveCall(
+            caller,
+            called,
+            timestamp,
+            caller_name=caller_name,
+        )
         self._state = "Eingehender Anruf"
         self._attributes.update({
             "ereignis": "ringing", "anrufer": caller or "unterdrückte Rufnummer",
+            "anrufer_name": caller_name,
             "angerufene_nummer": called, "leitung": line, "verbindungs_id": connection_id,
             "zeitpunkt": timestamp.isoformat(), "vom_anrufbeantworter_angenommen": False,
         })
@@ -208,6 +265,7 @@ class CallMonitorTestSensor(SensorEntity):
             event_name = "answered"
         self._attributes.update({
             "ereignis": event_name, "anrufer": call.caller or "unterdrückte Rufnummer",
+            "anrufer_name": call.caller_name,
             "angerufene_nummer": call.called, "nebenstelle": extension,
             "verbindungs_id": connection_id, "zeitpunkt": timestamp.isoformat(),
             "vom_anrufbeantworter_angenommen": call.answered_by_answering_machine,
@@ -233,6 +291,7 @@ class CallMonitorTestSensor(SensorEntity):
             self._state = "Verpasster Anruf"
             self._attributes.update({
                 "ereignis": "missed", "anrufer": call.caller or "unterdrückte Rufnummer",
+                "anrufer_name": call.caller_name,
                 "angerufene_nummer": call.called, "verbindungs_id": connection_id,
                 "zeitpunkt": timestamp.isoformat(), "vom_anrufbeantworter_angenommen": False,
             })
@@ -246,7 +305,48 @@ class CallMonitorTestSensor(SensorEntity):
             called=call.called,
             timestamp=call.started_at.isoformat(),
             duration_seconds=duration_seconds,
+            caller_name=call.caller_name,
         ))
+        self.async_write_ha_state()
+
+    async def async_sync_phonebook(self) -> None:
+        """Manually synchronize the FRITZ!Box phonebooks."""
+        if not self._phonebook.enabled:
+            self._attributes["telefonbuch_status"] = "nicht konfiguriert"
+            self.async_write_ha_state()
+            return
+
+        self._attributes["telefonbuch_status"] = "synchronisiere"
+        self.async_write_ha_state()
+
+        try:
+            await self._phonebook.async_sync()
+            self._attributes["telefonbuch_status"] = "verbunden"
+            self._attributes["telefonbuch_kontakte"] = self._phonebook.contact_count
+            self._attributes["telefonbuch_anzahl"] = self._phonebook.phonebook_count
+            if self._phonebook.last_sync is not None:
+                self._attributes["telefonbuch_letzte_synchronisierung"] = (
+                    self._phonebook.last_sync.isoformat()
+                )
+
+            changed = False
+            for call in self._calls:
+                contact = self._phonebook.lookup(call.caller)
+                new_name = contact.name if contact is not None else None
+                if call.caller_name != new_name:
+                    call.caller_name = new_name
+                    changed = True
+
+            if changed:
+                await self._store.async_save(
+                    {"calls": [item.as_dict() for item in self._calls]}
+                )
+
+            self._sync_calls_attribute()
+        except Exception as error:
+            LOGGER.warning("Telefonbuch konnte nicht synchronisiert werden: %s", error)
+            self._attributes["telefonbuch_status"] = "Fehler"
+
         self.async_write_ha_state()
 
     async def async_clear_calls(self) -> None:

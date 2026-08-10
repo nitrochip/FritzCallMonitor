@@ -209,6 +209,7 @@ class CallMonitorTestCard extends HTMLElement {
       .map((call) => {
         const appearance = this._appearance(call.status);
         const caller = call.caller || "unterdrückte Rufnummer";
+        const callerName = call.caller_name || "";
         const duration =
           call.status !== "missed" && call.duration_seconds != null
             ? ` · ${this._escape(
@@ -230,7 +231,14 @@ class CallMonitorTestCard extends HTMLElement {
             </div>
 
             <div class="call-main">
-              <div class="caller">${this._escape(caller)}</div>
+              <div class="caller">${
+                callerName ? this._escape(callerName) : this._escape(caller)
+              }</div>
+              ${
+                callerName
+                  ? `<div class="number">${this._escape(caller)}</div>`
+                  : ""
+              }
               <div class="meta">
                 <span>${this._escape(this._formatDate(call.timestamp))}</span>
               </div>
@@ -429,12 +437,17 @@ class CallMonitorTestCard extends HTMLElement {
           white-space: nowrap;
         }
 
+        .number,
         .meta,
         .status,
         .called,
         .empty {
           color: var(--secondary-text-color);
           font-size: 0.88rem;
+        }
+
+        .number {
+          margin-top: 1px;
         }
 
         .meta {
