@@ -476,6 +476,13 @@ class CallMonitorTestSensor(SensorEntity):
             LOGGER.warning("Telefonbuch konnte nicht synchronisiert werden: %s", error)
             self._attributes["telefonbuch_status"] = "Fehler"
 
+        for message in self._answering_machine.message_objects:
+            contact = self._phonebook.lookup(message.caller)
+            new_name = contact.name if contact is not None else None
+            if message.caller_name != new_name:
+                message.caller_name = new_name
+
+        self._write_voicemail_state()
         self.async_write_ha_state()
 
     async def async_add_contact(
@@ -619,18 +626,26 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
 
 
 def _fcm_voicemail_duration_seconds(value: str) -> int | None:
-    """Convert AVM voicemail duration (mm:ss or h:mm:ss) to seconds."""
+    """Convert AVM voicemail duration to seconds."""
     text = str(value or "").strip()
     if not text:
         return None
+
+    # Some FRITZ!OS variants expose a plain numeric second count.
+    if text.isdigit():
+        return int(text)
+
     try:
         parts = [int(part) for part in text.split(":")]
     except ValueError:
         return None
+
     if len(parts) == 2:
         minutes, seconds = parts
         return minutes * 60 + seconds
+
     if len(parts) == 3:
         hours, minutes, seconds = parts
         return hours * 3600 + minutes * 60 + seconds
+
     return None

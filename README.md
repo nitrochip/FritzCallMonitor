@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.4**
+> Entwicklungsstand: **v0.4.5**
 
 ## Funktionen
 
@@ -447,3 +447,14 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   FRITZ!Box-Telefonbuch übernommen werden.
 - AVM-Nachrichtendauern werden als `mm:ss` interpretiert; unter einer Minute
   werden Sekunden angezeigt.
+
+
+## v0.4.5
+
+- AB-Dauer robust aus Sekunden bzw. `mm:ss`/`hh:mm:ss`.
+- Filter `Alle` mischt Anrufe und Voicemails chronologisch absteigend.
+- Voicemail-Zeilen entsprechen dem Call-Layout:
+  Name in Zeile 1; Telefonnummer · Zeitpunkt · Dauer in Zeile 2.
+- `Neu` wurde entfernt.
+- Telefonbuch-Synchronisierung gleicht jetzt auch Voicemail-Namen vollständig
+  ab; gelöschte Kontakte verlieren ihren alten Namen.

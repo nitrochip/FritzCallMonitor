@@ -517,6 +517,30 @@ class CallMonitorTestCard extends HTMLElement {
       ? voicemailState.attributes.nachrichten
       : [];
 
+    const parseVoicemailDate = (value) => {
+      const match = String(value || "").match(
+        /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/
+      );
+      if (!match) return null;
+
+      let year = Number(match[3]);
+      if (year < 100) year += 2000;
+
+      return new Date(
+        year,
+        Number(match[2]) - 1,
+        Number(match[1]),
+        Number(match[4]),
+        Number(match[5]),
+        Number(match[6] || 0)
+      );
+    };
+
+    const voicemailTimestamp = (message) => {
+      const date = parseVoicemailDate(message.date);
+      return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+    };
+
     const visibleCalls = this._filterCalls(calls, voicemails)
       .slice(0, maxCalls);
 
@@ -615,13 +639,101 @@ class CallMonitorTestCard extends HTMLElement {
       })
       .join("");
 
+    const callEntries = visibleCalls.map((call) => ({
+      timestamp: call.timestamp ? new Date(call.timestamp).getTime() : 0,
+      html: (() => {
+        const appearance = this._appearance(call.status);
+        const caller = call.caller || "unterdrückte Rufnummer";
+        const callerName = call.caller_name || "";
+        const duration =
+          call.status !== "missed" && call.duration_seconds != null
+            ? ` · ${this._escape(this._formatDuration(call.duration_seconds))}`
+            : "";
+        const dateText = this._escape(this._formatDate(call.timestamp));
+        const secondLine = callerName
+          ? `${this._escape(caller)} · ${dateText} · ${appearance.label}${duration}`
+          : `${dateText} · ${appearance.label}${duration}`;
+        const canAddContact =
+          !callerName &&
+          caller &&
+          caller !== "unterdrückte Rufnummer" &&
+          phonebooks.length > 0;
+        const calledNumber =
+          this.config.show_called_number && call.called
+            ? `<div class="called">Angerufene Nummer: ${this._escape(call.called)}</div>`
+            : "";
+
+        return `
+          <div class="call-row">
+            <div class="icon-badge" style="--call-color:${appearance.color}">
+              <ha-icon icon="${appearance.icon}"></ha-icon>
+            </div>
+            <div class="call-main">
+              <div class="caller">${this._escape(callerName || caller)}</div>
+              <div class="call-details">${secondLine}</div>
+              ${calledNumber}
+            </div>
+            <div class="row-menu-wrap">
+              <button
+                class="row-action"
+                data-action="toggle-menu"
+                data-call-id="${this._escape(call.call_id || "")}"
+                type="button"
+                title="Weitere Aktionen"
+                aria-label="Weitere Aktionen"
+              >
+                <ha-icon icon="mdi:dots-vertical"></ha-icon>
+              </button>
+              ${
+                this._openMenuCallId === call.call_id
+                  ? `
+                    <div class="row-menu">
+                      ${
+                        canAddContact
+                          ? `
+                            <button
+                              class="menu-item"
+                              data-action="add-contact"
+                              data-number="${this._escape(caller)}"
+                              type="button"
+                            >
+                              <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                              <span>Kontakt hinzufügen</span>
+                            </button>
+                          `
+                          : ""
+                      }
+                      <button
+                        class="menu-item danger"
+                        data-action="delete-call"
+                        data-call-id="${this._escape(call.call_id || "")}"
+                        type="button"
+                      >
+                        <ha-icon icon="mdi:delete-outline"></ha-icon>
+                        <span>Löschen</span>
+                      </button>
+                    </div>
+                  `
+                  : ""
+              }
+            </div>
+          </div>
+        `;
+      })(),
+    }));
+
     const voicemailRows = voicemails
       .slice(0, maxCalls)
       .map((message) => {
-        const caller =
+        const callerNumber =
+          message.caller || "unterdrückte Rufnummer";
+        const callerName =
           message.caller_name ||
           message.name ||
-          message.caller ||
+          "";
+        const caller =
+          callerName ||
+          callerNumber ||
           "Unbekannter Anrufer";
         const seconds = Number(message.duration_seconds);
         let formattedDuration = "";
@@ -636,19 +748,51 @@ class CallMonitorTestCard extends HTMLElement {
               : `${minutes} Min.`;
           }
         } else {
-          formattedDuration = String(message.duration || "");
+          const rawDuration = String(message.duration || "").trim();
+          if (/^\d+$/.test(rawDuration)) {
+            const rawSeconds = Number(rawDuration);
+            formattedDuration =
+              rawSeconds < 60
+                ? `${rawSeconds} Sek.`
+                : (
+                    rawSeconds % 60
+                      ? `${Math.floor(rawSeconds / 60)} Min. ${rawSeconds % 60} Sek.`
+                      : `${Math.floor(rawSeconds / 60)} Min.`
+                  );
+          } else {
+            const rawParts = rawDuration.split(":").map(Number);
+            if (
+              rawParts.length === 2 &&
+              rawParts.every((part) => Number.isFinite(part))
+            ) {
+              const totalSeconds = rawParts[0] * 60 + rawParts[1];
+              formattedDuration =
+                totalSeconds < 60
+                  ? `${totalSeconds} Sek.`
+                  : (
+                      totalSeconds % 60
+                        ? `${Math.floor(totalSeconds / 60)} Min. ${totalSeconds % 60} Sek.`
+                        : `${Math.floor(totalSeconds / 60)} Min.`
+                    );
+            } else {
+              formattedDuration = rawDuration;
+            }
+          }
         }
         const duration = formattedDuration
           ? ` · ${this._escape(formattedDuration)}`
           : "";
-        const newLabel = message.new ? " · Neu" : "";
+        const voicemailDateObject = parseVoicemailDate(message.date);
+        const dateText =
+          voicemailDateObject && !Number.isNaN(voicemailDateObject.getTime())
+            ? this._formatDate(voicemailDateObject.toISOString())
+            : this._escape(message.date || "");
         const loading =
           this._voicemailLoading === message.media_source_id;
         const voicemailNumber = message.caller || "";
         const canAddVoicemailContact =
           Boolean(voicemailNumber) &&
           !message.caller_name &&
-          !message.name &&
           phonebooks.length > 0;
 
         return `
@@ -660,7 +804,11 @@ class CallMonitorTestCard extends HTMLElement {
             <div class="call-main">
               <div class="caller">${this._escape(caller)}</div>
               <div class="call-details">
-                ${this._escape(message.date || "")}${duration}${newLabel}
+                ${
+                  callerName
+                    ? `${this._escape(callerNumber)} · `
+                    : ""
+                }${dateText}${duration}
               </div>
             </div>
 
@@ -716,6 +864,155 @@ class CallMonitorTestCard extends HTMLElement {
           </div>
         `;
       })
+      .join("");
+
+    const voicemailEntries = voicemails.map((message) => {
+      const callerNumber =
+        message.caller || "unterdrückte Rufnummer";
+      const callerName =
+        message.caller_name ||
+        message.name ||
+        "";
+      const caller =
+        callerName ||
+        callerNumber ||
+        "Unbekannter Anrufer";
+
+      const seconds = Number(message.duration_seconds);
+      let formattedDuration = "";
+      if (Number.isFinite(seconds) && seconds > 0) {
+        if (seconds < 60) {
+          formattedDuration = `${Math.round(seconds)} Sek.`;
+        } else {
+          const minutes = Math.floor(seconds / 60);
+          const rest = Math.round(seconds % 60);
+          formattedDuration = rest
+            ? `${minutes} Min. ${rest} Sek.`
+            : `${minutes} Min.`;
+        }
+      } else {
+        const rawDuration = String(message.duration || "").trim();
+        if (/^\d+$/.test(rawDuration)) {
+          const rawSeconds = Number(rawDuration);
+          formattedDuration =
+            rawSeconds < 60
+              ? `${rawSeconds} Sek.`
+              : (
+                  rawSeconds % 60
+                    ? `${Math.floor(rawSeconds / 60)} Min. ${rawSeconds % 60} Sek.`
+                    : `${Math.floor(rawSeconds / 60)} Min.`
+                );
+        } else {
+          const rawParts = rawDuration.split(":").map(Number);
+          if (
+            rawParts.length === 2 &&
+            rawParts.every((part) => Number.isFinite(part))
+          ) {
+            const totalSeconds = rawParts[0] * 60 + rawParts[1];
+            formattedDuration =
+              totalSeconds < 60
+                ? `${totalSeconds} Sek.`
+                : (
+                    totalSeconds % 60
+                      ? `${Math.floor(totalSeconds / 60)} Min. ${totalSeconds % 60} Sek.`
+                      : `${Math.floor(totalSeconds / 60)} Min.`
+                  );
+          } else {
+            formattedDuration = rawDuration;
+          }
+        }
+      }
+
+      const duration = formattedDuration
+        ? ` · ${this._escape(formattedDuration)}`
+        : "";
+      const voicemailDateObject = parseVoicemailDate(message.date);
+      const dateText =
+        voicemailDateObject && !Number.isNaN(voicemailDateObject.getTime())
+          ? this._formatDate(voicemailDateObject.toISOString())
+          : this._escape(message.date || "");
+      const loading =
+        this._voicemailLoading === message.media_source_id;
+      const voicemailNumber = message.caller || "";
+      const canAddVoicemailContact =
+        Boolean(voicemailNumber) &&
+        !message.caller_name &&
+        phonebooks.length > 0;
+
+      return {
+        timestamp: voicemailTimestamp(message),
+        html: `
+          <div class="call-row voicemail-row">
+            <div class="icon-badge" style="--call-color:var(--info-color, #2196f3)">
+              <ha-icon icon="mdi:voicemail"></ha-icon>
+            </div>
+            <div class="call-main">
+              <div class="caller">${this._escape(caller)}</div>
+              <div class="call-details">
+                ${
+                  callerName
+                    ? `${this._escape(callerNumber)} · `
+                    : ""
+                }${dateText}${duration}
+              </div>
+            </div>
+            <div class="voicemail-actions">
+              ${
+                canAddVoicemailContact
+                  ? `
+                    <button
+                      class="row-action"
+                      data-action="add-voicemail-contact"
+                      data-number="${this._escape(voicemailNumber)}"
+                      type="button"
+                      title="Kontakt hinzufügen"
+                      aria-label="Kontakt hinzufügen"
+                    >
+                      <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                    </button>
+                  `
+                  : ""
+              }
+              <button
+                class="row-action"
+                data-action="play-voicemail"
+                data-media-source="${this._escape(message.media_source_id || "")}"
+                type="button"
+                title="${
+                  this._voicemailPlayingId === message.media_source_id &&
+                  this._voicemailIsPlaying
+                    ? "Nachricht pausieren"
+                    : "Nachricht abspielen"
+                }"
+                aria-label="${
+                  this._voicemailPlayingId === message.media_source_id &&
+                  this._voicemailIsPlaying
+                    ? "Nachricht pausieren"
+                    : "Nachricht abspielen"
+                }"
+                ${loading ? "disabled" : ""}
+              >
+                <ha-icon icon="${
+                  loading
+                    ? "mdi:loading"
+                    : (
+                        this._voicemailPlayingId === message.media_source_id &&
+                        this._voicemailIsPlaying
+                          ? "mdi:pause-circle-outline"
+                          : "mdi:play-circle-outline"
+                      )
+                }"></ha-icon>
+              </button>
+            </div>
+          </div>
+        `,
+      };
+    });
+
+    const allRows = [...callEntries, ...voicemailEntries]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, maxCalls)
+      .map((entry) => entry.html)
       .join("");
 
     const voicemailPlayer =
@@ -833,7 +1130,7 @@ class CallMonitorTestCard extends HTMLElement {
               : (
                   this._activeFilter === "all"
                     ? (
-                        `${voicemailRows}${rows}` ||
+                        allRows ||
                         '<div class="empty">Keine Anrufe vorhanden.</div>'
                       )
                     : (

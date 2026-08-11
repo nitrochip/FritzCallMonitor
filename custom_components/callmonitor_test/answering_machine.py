@@ -293,7 +293,12 @@ class FritzAnsweringMachineManager:
             called = values.get("Called") or values.get("CalledNumber") or ""
             name = values.get("Name", "")
             date = values.get("Date", "")
-            duration = values.get("Duration", "")
+            duration = (
+                values.get("Duration")
+                or values.get("Length")
+                or values.get("LengthSec")
+                or ""
+            )
             path = values.get("Path", "")
             raw_new = values.get("New") or values.get("NewMessage") or "0"
             is_new = str(raw_new).strip().lower() in {

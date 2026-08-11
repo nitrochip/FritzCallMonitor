@@ -2,6 +2,17 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.5] - 2026-08-11
+
+### Fixed
+- Voicemail duration parsing handles numeric seconds and `mm:ss`/`hh:mm:ss`.
+- Phonebook synchronization fully reconciles voicemail caller names, including deleted contacts.
+
+### Changed
+- `Alle` is sorted chronologically descending across calls and voicemail messages.
+- Voicemail layout now matches normal call rows.
+- Removed `Neu` label from voicemail rows.
+
 ## [0.4.4] - 2026-08-11
 
 ### Changed
