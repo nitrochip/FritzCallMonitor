@@ -39,6 +39,19 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const addVoicemailContactButton =
+      event.target.closest("[data-action='add-voicemail-contact']");
+    if (addVoicemailContactButton && this.contains(addVoicemailContactButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._contactDraft = {
+        number: addVoicemailContactButton.dataset.number || "",
+      };
+      this._contactError = "";
+      this._render();
+      return;
+    }
+
     const playButton = event.target.closest("[data-action='play-voicemail']");
     if (playButton && this.contains(playButton)) {
       event.preventDefault();
@@ -279,16 +292,95 @@ class CallMonitorTestCard extends HTMLElement {
     this._render();
   }
 
-  _filterCalls(calls) {
+  _filterCalls(calls, voicemails) {
+    const normalizeNumber = (value) =>
+      String(value || "").replace(/[^0-9+]/g, "");
+
+    const parseVoicemailDate = (value) => {
+      const match = String(value || "").match(
+        /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+(\d{1,2}):(\d{2})/
+      );
+      if (!match) return null;
+
+      let year = Number(match[3]);
+      if (year < 100) year += 2000;
+
+      return new Date(
+        year,
+        Number(match[2]) - 1,
+        Number(match[1]),
+        Number(match[4]),
+        Number(match[5])
+      );
+    };
+
+    const hasMatchingVoicemail = (call) => {
+      if (call.status !== "answering_machine") return false;
+
+      const callNumber = normalizeNumber(call.caller);
+      const callDate = call.timestamp ? new Date(call.timestamp) : null;
+
+      return voicemails.some((message) => {
+        const messageNumber = normalizeNumber(message.caller);
+
+        if (
+          callNumber &&
+          messageNumber &&
+          callNumber !== messageNumber
+        ) {
+          return false;
+        }
+
+        const messageDate = parseVoicemailDate(message.date);
+
+        if (
+          callDate &&
+          !Number.isNaN(callDate.getTime()) &&
+          messageDate &&
+          !Number.isNaN(messageDate.getTime())
+        ) {
+          return (
+            Math.abs(callDate.getTime() - messageDate.getTime()) <=
+            10 * 60 * 1000
+          );
+        }
+
+        return Boolean(
+          callNumber &&
+          messageNumber &&
+          callNumber === messageNumber
+        );
+      });
+    };
+
+    const prepared = calls
+      .filter((call) => {
+        // Never render the raw answering-machine call when a real
+        // voicemail recording exists for it.
+        return !hasMatchingVoicemail(call);
+      })
+      .map((call) => {
+        // AB answered, but no recording: treat as a missed call.
+        if (call.status === "answering_machine") {
+          return {
+            ...call,
+            _original_status: call.status,
+            status: "missed",
+          };
+        }
+        return call;
+      });
+
     if (this._activeFilter === "missed") {
-      return calls.filter((call) => call.status === "missed");
+      return prepared.filter((call) => call.status === "missed");
     }
 
     if (this._activeFilter === "answering_machine") {
-      return calls.filter((call) => call.status === "answering_machine");
+      // This view is populated by real voicemail rows only.
+      return [];
     }
 
-    return calls;
+    return prepared;
   }
 
   _appearance(status) {
@@ -387,7 +479,6 @@ class CallMonitorTestCard extends HTMLElement {
       : [];
 
     const maxCalls = Math.max(1, Number(this.config.max_calls || 10));
-    const visibleCalls = this._filterCalls(calls).slice(0, maxCalls);
 
     const filters = [
       { id: "all", label: "Alle" },
@@ -425,6 +516,9 @@ class CallMonitorTestCard extends HTMLElement {
     const voicemails = Array.isArray(voicemailState?.attributes?.nachrichten)
       ? voicemailState.attributes.nachrichten
       : [];
+
+    const visibleCalls = this._filterCalls(calls, voicemails)
+      .slice(0, maxCalls);
 
     const rows = visibleCalls
       .map((call) => {
@@ -550,6 +644,12 @@ class CallMonitorTestCard extends HTMLElement {
         const newLabel = message.new ? " · Neu" : "";
         const loading =
           this._voicemailLoading === message.media_source_id;
+        const voicemailNumber = message.caller || "";
+        const canAddVoicemailContact =
+          Boolean(voicemailNumber) &&
+          !message.caller_name &&
+          !message.name &&
+          phonebooks.length > 0;
 
         return `
           <div class="call-row voicemail-row">
@@ -564,11 +664,29 @@ class CallMonitorTestCard extends HTMLElement {
               </div>
             </div>
 
-            <button
-              class="row-action"
-              data-action="play-voicemail"
-              data-media-source="${this._escape(message.media_source_id || "")}"
-              type="button"
+            <div class="voicemail-actions">
+              ${
+                canAddVoicemailContact
+                  ? `
+                    <button
+                      class="row-action"
+                      data-action="add-voicemail-contact"
+                      data-number="${this._escape(voicemailNumber)}"
+                      type="button"
+                      title="Kontakt hinzufügen"
+                      aria-label="Kontakt hinzufügen"
+                    >
+                      <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                    </button>
+                  `
+                  : ""
+              }
+
+              <button
+                class="row-action"
+                data-action="play-voicemail"
+                data-media-source="${this._escape(message.media_source_id || "")}"
+                type="button"
               title="${
                 this._voicemailPlayingId === message.media_source_id &&
                 this._voicemailIsPlaying
@@ -593,7 +711,8 @@ class CallMonitorTestCard extends HTMLElement {
                         : "mdi:play-circle-outline"
                     )
               }"></ha-icon>
-            </button>
+              </button>
+            </div>
           </div>
         `;
       })
@@ -708,12 +827,19 @@ class CallMonitorTestCard extends HTMLElement {
           ${
             this._activeFilter === "answering_machine"
               ? (
-                  `${voicemailRows}${rows}` ||
-                  '<div class="empty">Keine Anrufe oder AB-Nachrichten vorhanden.</div>'
+                  voicemailRows ||
+                  '<div class="empty">Keine AB-Nachrichten vorhanden.</div>'
                 )
               : (
-                  rows ||
-                  '<div class="empty">Keine passenden Anrufe vorhanden.</div>'
+                  this._activeFilter === "all"
+                    ? (
+                        `${voicemailRows}${rows}` ||
+                        '<div class="empty">Keine Anrufe vorhanden.</div>'
+                      )
+                    : (
+                        rows ||
+                        '<div class="empty">Keine passenden Anrufe vorhanden.</div>'
+                      )
                 )
           }
           ${voicemailError}
@@ -917,6 +1043,13 @@ class CallMonitorTestCard extends HTMLElement {
 
         .row-action ha-icon {
           --mdc-icon-size: 21px;
+        }
+
+        .voicemail-actions {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          flex: 0 0 auto;
         }
 
         .voicemail-player {

@@ -2,6 +2,19 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.4] - 2026-08-11
+
+### Changed
+- Answering-machine calls without a voicemail recording are displayed as missed calls.
+- They now appear in `Verpasst` with the red missed-call icon.
+- Raw answering-machine call rows are suppressed when a matching voicemail exists.
+- `Anrufbeantworter` shows voicemail recordings only.
+- `Alle` includes voicemail recordings with Play/Pause alongside normal calls.
+- AVM two-part voicemail durations are interpreted as `mm:ss`.
+
+### Added
+- Add unknown voicemail callers directly to the FRITZ!Box phonebook.
+
 ## [0.4.3] - 2026-08-11
 
 ### Fixed

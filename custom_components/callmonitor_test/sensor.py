@@ -619,7 +619,7 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
 
 
 def _fcm_voicemail_duration_seconds(value: str) -> int | None:
-    """Convert AVM voicemail duration (h:mm or h:mm:ss) to seconds."""
+    """Convert AVM voicemail duration (mm:ss or h:mm:ss) to seconds."""
     text = str(value or "").strip()
     if not text:
         return None
@@ -628,8 +628,8 @@ def _fcm_voicemail_duration_seconds(value: str) -> int | None:
     except ValueError:
         return None
     if len(parts) == 2:
-        hours, minutes = parts
-        return hours * 3600 + minutes * 60
+        minutes, seconds = parts
+        return minutes * 60 + seconds
     if len(parts) == 3:
         hours, minutes, seconds = parts
         return hours * 3600 + minutes * 60 + seconds

@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.3**
+> Entwicklungsstand: **v0.4.4**
 
 ## Funktionen
 
@@ -432,3 +432,18 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
 - Erneuter Klick pausiert die aktuelle Nachricht.
 - Klick auf Pause/Play setzt dieselbe Nachricht fort.
 - Nach Ende der Nachricht wechselt der Button automatisch zurück auf Play.
+
+
+## v0.4.4 – AB und Verpasst
+
+- AB-Anruf ohne hinterlassene Nachricht wird als verpasster Anruf dargestellt.
+- Dieser Eintrag erscheint unter `Alle` und `Verpasst` mit rotem
+  Verpasst-Symbol und Drei-Punkte-Menü.
+- Existiert eine echte AB-Nachricht, wird der zugehörige rohe
+  `answering_machine`-Call nicht zusätzlich angezeigt.
+- `Anrufbeantworter` zeigt ausschließlich echte AB-Nachrichten.
+- `Alle` zeigt zusätzlich die echten AB-Nachrichten samt Play/Pause.
+- Unbekannte AB-Anrufer können über einen direkten Kontakt-Button ins
+  FRITZ!Box-Telefonbuch übernommen werden.
+- AVM-Nachrichtendauern werden als `mm:ss` interpretiert; unter einer Minute
+  werden Sekunden angezeigt.
