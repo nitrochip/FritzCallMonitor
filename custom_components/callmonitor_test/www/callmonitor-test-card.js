@@ -118,6 +118,10 @@ class CallMonitorTestCard extends HTMLElement {
   async _playVoicemail(mediaSourceId) {
     if (!this._hass || !mediaSourceId) return;
 
+    this._voicemailPlayError = "";
+    this._voicemailLoading = mediaSourceId;
+    this._render();
+
     try {
       const resolvedMedia = await this._hass.callWS({
         type: "media_source/resolve_media",
@@ -125,25 +129,54 @@ class CallMonitorTestCard extends HTMLElement {
       });
 
       if (!resolvedMedia?.url) {
-        throw new Error("No playback URL resolved");
+        throw new Error("Media Source hat keine URL geliefert.");
+      }
+
+      const signed = await this._hass.callWS({
+        type: "auth/sign_path",
+        path: resolvedMedia.url,
+        expires: 60,
+      });
+
+      if (!signed?.path) {
+        throw new Error("Home Assistant konnte den Audiopfad nicht signieren.");
       }
 
       if (this._voicemailAudio) {
         this._voicemailAudio.pause();
+        this._voicemailAudio.src = "";
         this._voicemailAudio = null;
       }
 
-      const audioUrl = window.location.origin + resolvedMedia.url;
-      this._voicemailAudio = new Audio(audioUrl);
-      this._voicemailAudio.type =
-        resolvedMedia.mime_type || "audio/wav";
+      const audioUrl = window.location.origin + signed.path;
+      const audio = new Audio();
+      audio.preload = "metadata";
+      audio.src = audioUrl;
+      audio.type = resolvedMedia.mime_type || "audio/wav";
 
-      await this._voicemailAudio.play();
+      audio.onerror = () => {
+        const code = audio.error?.code;
+        const message = audio.error?.message || "Unbekannter Audiofehler";
+        this._voicemailPlayError =
+          `Audio konnte nicht geladen werden (Code ${code || "?"}: ${message}).`;
+        this._voicemailLoading = "";
+        this._render();
+        console.error("FritzCallMonitor audio error:", audio.error, audioUrl);
+      };
+
+      audio.oncanplay = () => {
+        this._voicemailLoading = "";
+        this._render();
+      };
+
+      this._voicemailAudio = audio;
+      await audio.play();
     } catch (error) {
-      console.error(
-        "FritzCallMonitor: Audio engine failed:",
-        error
-      );
+      this._voicemailLoading = "";
+      this._voicemailPlayError =
+        error?.message || String(error) || "Wiedergabe fehlgeschlagen.";
+      this._render();
+      console.error("FritzCallMonitor: Audio engine failed:", error);
     }
   }
 
@@ -515,8 +548,8 @@ class CallMonitorTestCard extends HTMLElement {
         : "";
 
     const voicemailError =
-      false
-        ? `<div class="empty">${this._escape(this._voicemailError)}</div>`
+      this._voicemailPlayError
+        ? `<div class="empty voicemail-error">${this._escape(this._voicemailPlayError)}</div>`
         : "";
 
     const phonebookOptions = phonebooks
@@ -618,6 +651,7 @@ class CallMonitorTestCard extends HTMLElement {
                   '<div class="empty">Keine passenden Anrufe vorhanden.</div>'
                 )
           }
+          ${voicemailError}
         </div>
       </ha-card>
       ${contactDialog}

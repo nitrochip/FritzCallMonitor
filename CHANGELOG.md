@@ -2,6 +2,14 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.1] - 2026-08-11
+
+### Fixed / Diagnostic
+- Media Source returns a local Home Assistant audio endpoint.
+- Frontend signs playback URL via `auth/sign_path`.
+- Playback errors are shown directly in the dashboard card.
+- No voicemail deletion changes.
+
 ## [0.4.0] - 2026-08-11
 
 ### Fixed

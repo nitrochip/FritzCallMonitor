@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.0**
+> Entwicklungsstand: **v0.4.1**
 
 ## Funktionen
 
@@ -406,3 +406,12 @@ AVM-Dauerwerte wie `0:01` entsprechen `0 Stunden, 1 Minute`.
 ## v0.4.0
 
 Nur Playbutton: signierte HA-Media-URL; Home Assistant lädt die Aufnahme serverseitig von der FRITZ!Box.
+
+
+## v0.4.1 – Playbutton-Diagnose
+
+Die Media Source liefert nur noch einen lokalen Home-Assistant-Pfad.
+Das Frontend signiert diesen Pfad über den offiziellen WebSocket-Befehl
+`auth/sign_path` und spielt anschließend die signierte URL ab.
+
+Fehler beim Auflösen, Signieren oder Laden werden direkt in der Karte angezeigt.
