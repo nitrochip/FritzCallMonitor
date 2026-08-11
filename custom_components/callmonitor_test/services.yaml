@@ -35,3 +35,14 @@ add_contact:
           max: 99
           mode: box
 
+delete_call:
+  name: Einzelnen Anruf löschen
+  description: Löscht genau einen gespeicherten Anruf aus FritzCallMonitor.
+  fields:
+    call_id:
+      name: Anruf-ID
+      description: Interne eindeutige ID des Anrufs.
+      required: true
+      selector:
+        text:
+

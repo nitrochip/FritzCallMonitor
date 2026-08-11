@@ -39,6 +39,25 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const menuButton = event.target.closest("[data-action='toggle-menu']");
+    if (menuButton && this.contains(menuButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const callId = menuButton.dataset.callId || "";
+      this._openMenuCallId =
+        this._openMenuCallId === callId ? null : callId;
+      this._render();
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-action='delete-call']");
+    if (deleteButton && this.contains(deleteButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._deleteCall(deleteButton.dataset.callId || "");
+      return;
+    }
+
     const addButton = event.target.closest("[data-action='add-contact']");
     if (addButton && this.contains(addButton)) {
       event.preventDefault();
@@ -86,6 +105,23 @@ class CallMonitorTestCard extends HTMLElement {
 
     this._activeFilter = filter;
     this._render();
+  }
+
+  async _deleteCall(callId) {
+    if (!this._hass || !callId) return;
+
+    this._openMenuCallId = null;
+
+    try {
+      await this._hass.callService("callmonitor_test", "delete_call", {
+        call_id: callId,
+      });
+    } catch (error) {
+      console.error(
+        "FritzCallMonitor: Anruf konnte nicht gelöscht werden.",
+        error
+      );
+    }
   }
 
   async _saveContact() {
@@ -307,22 +343,52 @@ class CallMonitorTestCard extends HTMLElement {
               ${calledNumber}
             </div>
 
-            ${
-              canAddContact
-                ? `
-                  <button
-                    class="row-action"
-                    data-action="add-contact"
-                    data-number="${this._escape(caller)}"
-                    type="button"
-                    title="Kontakt hinzufügen"
-                    aria-label="Kontakt hinzufügen"
-                  >
-                    <ha-icon icon="mdi:account-plus-outline"></ha-icon>
-                  </button>
-                `
-                : ""
-            }
+            <div class="row-menu-wrap">
+              <button
+                class="row-action"
+                data-action="toggle-menu"
+                data-call-id="${this._escape(call.call_id || "")}"
+                type="button"
+                title="Weitere Aktionen"
+                aria-label="Weitere Aktionen"
+              >
+                <ha-icon icon="mdi:dots-vertical"></ha-icon>
+              </button>
+
+              ${
+                this._openMenuCallId === call.call_id
+                  ? `
+                    <div class="row-menu">
+                      ${
+                        canAddContact
+                          ? `
+                            <button
+                              class="menu-item"
+                              data-action="add-contact"
+                              data-number="${this._escape(caller)}"
+                              type="button"
+                            >
+                              <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                              <span>Kontakt hinzufügen</span>
+                            </button>
+                          `
+                          : ""
+                      }
+
+                      <button
+                        class="menu-item danger"
+                        data-action="delete-call"
+                        data-call-id="${this._escape(call.call_id || "")}"
+                        type="button"
+                      >
+                        <ha-icon icon="mdi:delete-outline"></ha-icon>
+                        <span>Löschen</span>
+                      </button>
+                    </div>
+                  `
+                  : ""
+              }
+            </div>
           </div>
         `;
       })
@@ -618,6 +684,53 @@ class CallMonitorTestCard extends HTMLElement {
 
         .row-action ha-icon {
           --mdc-icon-size: 21px;
+        }
+
+        .row-menu-wrap {
+          position: relative;
+          align-self: center;
+        }
+
+        .row-menu {
+          position: absolute;
+          right: 0;
+          top: 38px;
+          z-index: 20;
+          min-width: 190px;
+          padding: 6px;
+          border: 1px solid var(--divider-color);
+          border-radius: 12px;
+          background: var(--card-background-color);
+          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+        }
+
+        .menu-item {
+          appearance: none;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 0;
+          border-radius: 8px;
+          padding: 10px 11px;
+          background: transparent;
+          color: var(--primary-text-color);
+          font: inherit;
+          font-size: 0.9rem;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .menu-item:hover {
+          background: var(--secondary-background-color);
+        }
+
+        .menu-item.danger {
+          color: var(--error-color, #db4437);
+        }
+
+        .menu-item ha-icon {
+          --mdc-icon-size: 20px;
         }
 
         .modal-backdrop {

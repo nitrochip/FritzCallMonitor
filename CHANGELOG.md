@@ -2,6 +2,20 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.2] - 2026-08-10
+
+### Added
+- Drei-Punkte-Menü pro Anruf.
+- Einzelne gespeicherte Anrufe dauerhaft löschen.
+- Eindeutige interne `call_id` pro Anruf.
+- Automatische Migration vorhandener Anrufe auf `call_id`.
+
+### Changed
+- `Kontakt hinzufügen` bei unbekannten Nummern in das Drei-Punkte-Menü verschoben.
+
+### Fixed
+- Periodischer Telefonbuch-Timer wird beim Entladen der Entität sauber beendet.
+
 ## [0.3.1] - 2026-08-10
 
 ### Fixed

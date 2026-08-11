@@ -23,3 +23,5 @@ SERVICE_SYNC_PHONEBOOK = "sync_phonebook"
 
 SERVICE_ADD_CONTACT = "add_contact"
 PHONEBOOK_SYNC_HOURS = 6
+
+SERVICE_DELETE_CALL = "delete_call"

@@ -8,7 +8,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DOMAIN, PLATFORMS, SERVICE_ADD_CONTACT, SERVICE_CLEAR_CALLS, SERVICE_SYNC_PHONEBOOK, STATIC_URL
+from .const import DOMAIN, PLATFORMS, SERVICE_ADD_CONTACT, SERVICE_CLEAR_CALLS, SERVICE_DELETE_CALL, SERVICE_SYNC_PHONEBOOK, STATIC_URL
 
 
 async def async_setup_entry(
@@ -53,6 +53,12 @@ async def async_setup_entry(
                 phonebook_id=int(call.data["phonebook_id"]),
             )
 
+    async def async_delete_call(call: ServiceCall) -> None:
+        """Delete one stored call."""
+        sensor = hass.data[DOMAIN].get(entry.entry_id)
+        if sensor is not None:
+            await sensor.async_delete_call(str(call.data["call_id"]))
+
     if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_CALLS):
         hass.services.async_register(
             DOMAIN,
@@ -72,6 +78,13 @@ async def async_setup_entry(
             DOMAIN,
             SERVICE_ADD_CONTACT,
             async_add_contact,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_DELETE_CALL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DELETE_CALL,
+            async_delete_call,
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -97,5 +110,7 @@ async def async_unload_entry(
             hass.services.async_remove(DOMAIN, SERVICE_SYNC_PHONEBOOK)
         if hass.services.has_service(DOMAIN, SERVICE_ADD_CONTACT):
             hass.services.async_remove(DOMAIN, SERVICE_ADD_CONTACT)
+        if hass.services.has_service(DOMAIN, SERVICE_DELETE_CALL):
+            hass.services.async_remove(DOMAIN, SERVICE_DELETE_CALL)
 
     return unload_ok

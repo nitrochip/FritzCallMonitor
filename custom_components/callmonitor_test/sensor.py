@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
+from uuid import uuid4
 from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -46,6 +47,7 @@ class StoredCall:
     timestamp: str
     duration_seconds: int | None = None
     caller_name: str | None = None
+    call_id: str = ""
 
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -109,24 +111,44 @@ class CallMonitorTestSensor(SensorEntity):
 
     async def async_initialize(self) -> None:
         stored = await self._store.async_load() or {}
-        self._calls = [
-            StoredCall(
-                status=str(item.get("status", "")), caller=str(item.get("caller", "")),
-                called=str(item.get("called", "")),
-                timestamp=str(item.get("timestamp", "")),
-                duration_seconds=(
-                    int(item["duration_seconds"])
-                    if item.get("duration_seconds") is not None
-                    else None
-                ),
-                caller_name=(
-                    str(item["caller_name"])
-                    if item.get("caller_name")
-                    else None
-                ),
+        migrated_ids = False
+        loaded_calls: list[StoredCall] = []
+
+        for item in stored.get("calls", []):
+            if not isinstance(item, dict):
+                continue
+
+            call_id = str(item.get("call_id", "")).strip()
+            if not call_id:
+                call_id = uuid4().hex
+                migrated_ids = True
+
+            loaded_calls.append(
+                StoredCall(
+                    status=str(item.get("status", "")),
+                    caller=str(item.get("caller", "")),
+                    called=str(item.get("called", "")),
+                    timestamp=str(item.get("timestamp", "")),
+                    duration_seconds=(
+                        int(item["duration_seconds"])
+                        if item.get("duration_seconds") is not None
+                        else None
+                    ),
+                    caller_name=(
+                        str(item["caller_name"])
+                        if item.get("caller_name")
+                        else None
+                    ),
+                    call_id=call_id,
+                )
             )
-            for item in stored.get("calls", []) if isinstance(item, dict)
-        ][:self._max_stored_calls]
+
+        self._calls = loaded_calls[:self._max_stored_calls]
+
+        if migrated_ids:
+            await self._store.async_save(
+                {"calls": [item.as_dict() for item in self._calls]}
+            )
         if self._phonebook.enabled:
             self._attributes["telefonbuch_status"] = "synchronisiere"
             try:
@@ -184,6 +206,10 @@ class CallMonitorTestSensor(SensorEntity):
             )
 
     async def async_will_remove_from_hass(self) -> None:
+        if self._phonebook_unsub is not None:
+            self._phonebook_unsub()
+            self._phonebook_unsub = None
+
         if self._writer is not None:
             self._writer.close()
             try:
@@ -324,6 +350,7 @@ class CallMonitorTestSensor(SensorEntity):
             timestamp=call.started_at.isoformat(),
             duration_seconds=duration_seconds,
             caller_name=call.caller_name,
+            call_id=uuid4().hex,
         ))
         self.async_write_ha_state()
 
@@ -406,6 +433,28 @@ class CallMonitorTestSensor(SensorEntity):
 
         self._sync_calls_attribute()
         self.async_write_ha_state()
+
+    async def async_delete_call(self, call_id: str) -> bool:
+        """Delete exactly one stored call by its unique ID."""
+        target_id = str(call_id or "").strip()
+        if not target_id:
+            return False
+
+        original_count = len(self._calls)
+        self._calls = [
+            call for call in self._calls
+            if call.call_id != target_id
+        ]
+
+        if len(self._calls) == original_count:
+            return False
+
+        self._sync_calls_attribute()
+        await self._store.async_save(
+            {"calls": [item.as_dict() for item in self._calls]}
+        )
+        self.async_write_ha_state()
+        return True
 
     async def async_clear_calls(self) -> None:
         """Clear the incoming-call history and persist the empty list."""

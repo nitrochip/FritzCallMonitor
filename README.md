@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.1**
+> Entwicklungsstand: **v0.3.2**
 
 ## Funktionen
 
@@ -186,6 +186,20 @@ Das Telefonbuch wird jetzt:
 
 neu von der FRITZ!Box abgerufen.
 
+
+
+## Einzelne Anrufe löschen (ab v0.3.2)
+
+Jeder Anruf besitzt rechts ein Drei-Punkte-Menü. Dort kann der ausgewählte
+Eintrag über `Löschen` dauerhaft aus der lokalen FritzCallMonitor-Anrufliste
+entfernt werden.
+
+Bei unbekannten Rufnummern befindet sich auch `Kontakt hinzufügen` in diesem
+Menü.
+
+Die FRITZ!Box-eigene Anrufliste wird dabei nicht verändert. Bestehende lokale
+Anrufe erhalten beim ersten Start von v0.3.2 automatisch eine eindeutige
+interne `call_id`.
 
 ## Clear all
 
