@@ -2,6 +2,16 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.0] - 2026-08-11
+
+### Fixed
+- Playbutton resolves to a signed Home Assistant URL.
+- Home Assistant fetches the voicemail recording server-side.
+- Frontend uses the same resolve-media / Audio playback flow as ha-fritzbox-call-card.
+
+### Scope
+- Playback only. No voicemail deletion changes.
+
 ## [0.3.9] - 2026-08-11
 
 ### Fixed

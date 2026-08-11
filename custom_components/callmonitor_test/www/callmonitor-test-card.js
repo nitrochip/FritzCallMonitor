@@ -133,10 +133,7 @@ class CallMonitorTestCard extends HTMLElement {
         this._voicemailAudio = null;
       }
 
-      const audioUrl = /^https?:\/\//i.test(resolvedMedia.url)
-        ? resolvedMedia.url
-        : window.location.origin + resolvedMedia.url;
-
+      const audioUrl = window.location.origin + resolvedMedia.url;
       this._voicemailAudio = new Audio(audioUrl);
       this._voicemailAudio.type =
         resolvedMedia.mime_type || "audio/wav";

@@ -100,6 +100,30 @@ class FritzAnsweringMachineManager:
         self._machines = machines
         self._last_sync = datetime.now().astimezone()
 
+    async def async_get_audio(self, message_id: str) -> tuple[bytes, str]:
+        """Download one voicemail recording server-side from the FRITZ!Box."""
+        message = self.get_message(message_id)
+        if message is None:
+            raise RuntimeError("AB-Nachricht wurde nicht gefunden.")
+
+        playback_url = message.playback_url or message.path
+        if not playback_url:
+            raise RuntimeError("Für diese AB-Nachricht ist keine Aufnahme verfügbar.")
+
+        return await self._hass.async_add_executor_job(
+            self._get_audio_blocking,
+            playback_url,
+        )
+
+    @staticmethod
+    def _get_audio_blocking(playback_url: str) -> tuple[bytes, str]:
+        with urlopen(playback_url, timeout=20) as response:
+            data = response.read()
+            content_type = response.headers.get_content_type() or "audio/wav"
+        if not data:
+            raise RuntimeError("Die FRITZ!Box hat eine leere Aufnahme geliefert.")
+        return data, content_type
+
     def _sync_blocking(
         self,
     ) -> tuple[list[AnsweringMachineMessage], list[AnsweringMachineInfo]]:

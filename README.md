@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.9**
+> Entwicklungsstand: **v0.4.0**
 
 ## Funktionen
 
@@ -401,3 +401,8 @@ im Filter `Anrufbeantworter`; ein dazu passender reiner Call-Monitor-Eintrag
 wird dort unterdrückt.
 
 AVM-Dauerwerte wie `0:01` entsprechen `0 Stunden, 1 Minute`.
+
+
+## v0.4.0
+
+Nur Playbutton: signierte HA-Media-URL; Home Assistant lädt die Aufnahme serverseitig von der FRITZ!Box.

@@ -12,6 +12,7 @@ from homeassistant.components.media_source import (
     Unresolvable,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.components.http.auth import async_sign_path
 
 from .const import DOMAIN
 
@@ -39,21 +40,15 @@ class FritzCallMonitorMediaSource(MediaSource):
             raise Unresolvable("FritzCallMonitor ist nicht geladen.")
 
         message = sensor.answering_machine.get_message(item.identifier)
-        if message is None or not message.path:
+        if message is None:
             raise Unresolvable("AB-Nachricht wurde nicht gefunden.")
 
-        playback_url = message.playback_url or message.path
-        if not playback_url:
-            raise Unresolvable("Für diese AB-Nachricht ist keine Aufnahme verfügbar.")
-
-        suffix = PurePosixPath(message.path.split("?", 1)[0]).suffix.lower()
-        mime_type = {
-            ".wav": "audio/wav",
-            ".mp3": "audio/mpeg",
-            ".ogg": "audio/ogg",
-        }.get(suffix, "audio/wav")
-
-        return PlayMedia(playback_url, mime_type)
+        signed_path = async_sign_path(
+            self.hass,
+            f"/api/callmonitor_test/voicemail/{message.message_id}",
+            expiration=60,
+        )
+        return PlayMedia(signed_path, "audio/wav")
 
     async def async_browse_media(
         self,

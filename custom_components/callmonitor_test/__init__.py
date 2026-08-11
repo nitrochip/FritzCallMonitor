@@ -4,11 +4,40 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from homeassistant.components.http import StaticPathConfig
+from aiohttp import web
+
+from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, PLATFORMS, SERVICE_ADD_CONTACT, SERVICE_CLEAR_CALLS, SERVICE_DELETE_CALL, SERVICE_SYNC_ANSWERING_MACHINE, SERVICE_SYNC_PHONEBOOK, STATIC_URL
+
+
+class FritzCallMonitorVoicemailAudioView(HomeAssistantView):
+    """Serve voicemail recordings through signed Home Assistant URLs."""
+
+    url = "/api/callmonitor_test/voicemail/{message_id}"
+    name = "api:callmonitor_test:voicemail"
+    requires_auth = True
+
+    async def get(self, request, message_id: str):
+        hass: HomeAssistant = request.app["hass"]
+        sensor = next(iter(hass.data.get(DOMAIN, {}).values()), None)
+        if sensor is None:
+            raise web.HTTPNotFound()
+
+        try:
+            data, content_type = await sensor.answering_machine.async_get_audio(
+                message_id
+            )
+        except Exception as error:
+            raise web.HTTPNotFound(text=str(error)) from error
+
+        return web.Response(
+            body=data,
+            content_type=content_type,
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 async def async_setup_entry(
@@ -30,6 +59,10 @@ async def async_setup_entry(
     )
 
     hass.data.setdefault(DOMAIN, {})
+
+    if not hass.data[DOMAIN].get("_voicemail_audio_view_registered"):
+        hass.http.register_view(FritzCallMonitorVoicemailAudioView())
+        hass.data[DOMAIN]["_voicemail_audio_view_registered"] = True
 
     async def async_clear_calls(call: ServiceCall) -> None:
         """Clear the persisted and displayed incoming-call history."""
