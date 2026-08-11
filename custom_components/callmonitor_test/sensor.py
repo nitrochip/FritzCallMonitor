@@ -437,14 +437,6 @@ class CallMonitorTestSensor(SensorEntity):
 
         self._write_voicemail_state()
 
-    async def async_delete_voicemail(self, message_id: str) -> None:
-        """Delete one voicemail on the FRITZ!Box."""
-        await self._answering_machine.async_delete_message(message_id)
-        for message in self._answering_machine.message_objects:
-            contact = self._phonebook.lookup(message.caller)
-            message.caller_name = contact.name if contact is not None else None
-        self._write_voicemail_state()
-
     async def async_sync_phonebook(self) -> None:
         """Manually synchronize the FRITZ!Box phonebooks."""
         if not self._phonebook.enabled:
@@ -565,24 +557,6 @@ class CallMonitorTestSensor(SensorEntity):
         self._attributes["gespeicherte_anrufe"] = len(self._calls)
 
 
-def _voicemail_duration_seconds(value: str) -> int | None:
-    """Convert AVM voicemail duration h:mm or h:mm:ss to seconds."""
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        parts = [int(part) for part in text.split(":")]
-    except ValueError:
-        return None
-    if len(parts) == 2:
-        hours, minutes = parts
-        return hours * 3600 + minutes * 60
-    if len(parts) == 3:
-        hours, minutes, seconds = parts
-        return hours * 3600 + minutes * 60 + seconds
-    return None
-
-
 class FritzCallMonitorVoicemailSensor(SensorEntity):
     """Dedicated FritzCallMonitor voicemail entity."""
 
@@ -617,8 +591,10 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
         for item in manager.message_objects:
             data = item.as_dict()
             data["media_source_id"] = f"media-source://{DOMAIN}/{item.message_id}"
-            data["duration_seconds"] = _voicemail_duration_seconds(item.duration)
+            data["duration_seconds"] = _fcm_voicemail_duration_seconds(item.duration)
             data.pop("path", None)
+            data.pop("playback_url", None)
+            data.pop("playback_url", None)
             messages.append(data)
 
         attrs: dict[str, Any] = {
@@ -640,3 +616,21 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
             attrs["fehler"] = self._error
 
         return attrs
+
+
+def _fcm_voicemail_duration_seconds(value: str) -> int | None:
+    """Convert AVM voicemail duration (h:mm or h:mm:ss) to seconds."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parts = [int(part) for part in text.split(":")]
+    except ValueError:
+        return None
+    if len(parts) == 2:
+        hours, minutes = parts
+        return hours * 3600 + minutes * 60
+    if len(parts) == 3:
+        hours, minutes, seconds = parts
+        return hours * 3600 + minutes * 60 + seconds
+    return None

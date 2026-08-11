@@ -2,21 +2,20 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
-## [0.3.8] - 2026-08-11
+## [0.3.9] - 2026-08-11
 
 ### Fixed
-- Voicemail playback uses an authenticated Home Assistant audio proxy.
-- AVM `h:mm` voicemail duration is converted correctly.
+- Construct FRITZ!Box recording URLs from the relative TAM `Path` and the valid
+  SID returned by `GetMessageList`.
+- Voicemail playback follows `resolve_media -> new Audio(url) -> play()`,
+  matching the proven frontend flow used by ha-fritzbox-call-card.
+- AVM voicemail durations in `h:mm` format are interpreted correctly.
 
 ### Changed
 - Removed separate `Nachrichten` filter.
-- Voicemails appear directly in `Anrufbeantworter`.
-- Matched answering-machine calls are replaced by their voicemail messages.
-- Voicemail rows use Play and Delete buttons.
-
-### Added
-- `callmonitor_test.delete_voicemail` action.
-- Authenticated voicemail audio endpoint.
+- Voicemail messages are shown in `Anrufbeantworter`.
+- A matching pure answering-machine call entry is hidden when an actual
+  voicemail recording exists.
 
 ## [0.3.7] - 2026-08-11
 

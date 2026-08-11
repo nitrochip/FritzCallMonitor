@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.8**
+> Entwicklungsstand: **v0.3.9**
 
 ## Funktionen
 
@@ -384,11 +384,20 @@ v0.3.7 liest ausschließlich. Löschen und Ändern von AB-Nachrichten folgt
 nach erfolgreichem Praxistest.
 
 
-## Änderungen v0.3.8
+## AB-Wiedergabe v0.3.9
 
-- Der separate Filter `Nachrichten` wurde entfernt.
-- Echte AB-Nachrichten erscheinen direkt unter `Anrufbeantworter`.
-- Existiert zu einem vom AB angenommenen Anruf eine Nachricht, ersetzt die Nachricht den reinen Call-Monitor-Eintrag.
-- AB-Nachrichten haben direkt Play und Löschen.
-- AVM-Dauerangaben wie `0:01` werden als eine Minute interpretiert.
-- Audio wird authentifiziert durch Home Assistant geproxyt.
+Die Wiedergabe folgt jetzt dem bewährten Ablauf der Fritzbox Call Card:
+
+1. `media_source/resolve_media`
+2. aus der aufgelösten URL ein Browser-`Audio`-Objekt erzeugen
+3. Wiedergabe direkt über `audio.play()`
+
+Zusätzlich wird der FRITZ!Box-Aufnahmepfad korrekt aus der relativen
+`/download.lua?...`-Angabe und der von `GetMessageList` gelieferten
+Session-ID (`sid`) zusammengesetzt.
+
+Der separate Filter `Nachrichten` entfällt. Echte Nachrichten erscheinen
+im Filter `Anrufbeantworter`; ein dazu passender reiner Call-Monitor-Eintrag
+wird dort unterdrückt.
+
+AVM-Dauerwerte wie `0:01` entsprechen `0 Stunden, 1 Minute`.

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from hashlib import sha256
 import logging
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import urlopen
 import xml.etree.ElementTree as ET
 
@@ -37,6 +38,7 @@ class AnsweringMachineMessage:
     duration: str
     new: bool
     path: str
+    playback_url: str = ""
     caller_name: str | None = None
 
     def as_dict(self) -> dict[str, object]:
@@ -97,41 +99,6 @@ class FritzAnsweringMachineManager:
         self._messages = messages
         self._machines = machines
         self._last_sync = datetime.now().astimezone()
-
-    async def async_get_audio(self, message_id: str) -> tuple[bytes, str]:
-        """Download one voicemail recording through the FRITZ!Box session URL."""
-        message = self.get_message(message_id)
-        if message is None or not message.path:
-            raise RuntimeError("AB-Nachricht wurde nicht gefunden.")
-        return await self._hass.async_add_executor_job(self._get_audio_blocking, message.path)
-
-    @staticmethod
-    def _get_audio_blocking(path: str) -> tuple[bytes, str]:
-        with urlopen(path, timeout=15) as response:
-            data = response.read()
-            content_type = response.headers.get_content_type() or "audio/wav"
-        if not data:
-            raise RuntimeError("Leere Audiodatei von der FRITZ!Box empfangen.")
-        return data, content_type
-
-    async def async_delete_message(self, message_id: str) -> None:
-        """Delete one voicemail on the FRITZ!Box and refresh."""
-        message = self.get_message(message_id)
-        if message is None:
-            raise RuntimeError("AB-Nachricht wurde nicht gefunden.")
-        await self._hass.async_add_executor_job(
-            self._delete_message_blocking, message.tam_index, message.index
-        )
-        await self.async_sync()
-
-    def _delete_message_blocking(self, tam_index: int, message_index: str) -> None:
-        fc = FritzConnection(address=self._host, user=self._username, password=self._password)
-        fc.call_action(
-            TAM_SERVICE,
-            "DeleteMessage",
-            NewIndex=tam_index,
-            NewMessageIndex=int(message_index),
-        )
 
     def _sync_blocking(
         self,
@@ -232,6 +199,46 @@ class FritzAnsweringMachineManager:
         raw = "|".join((str(tam_index), index, path, date, caller))
         return sha256(raw.encode("utf-8")).hexdigest()[:24]
 
+    @staticmethod
+    def _build_playback_url(list_url: str, path: str) -> str:
+        """Build authenticated FRITZ!Box recording URL from XML Path + SID."""
+        if not path:
+            return ""
+
+        list_parts = urlparse(list_url)
+        path_parts = urlparse(path)
+
+        # Path in TAM XML is normally relative, e.g.
+        # /download.lua?path=/data/tam/rec/rec.0.001
+        scheme = list_parts.scheme
+        netloc = list_parts.netloc
+        target_path = path_parts.path
+
+        target_query = parse_qs(path_parts.query, keep_blank_values=True)
+        list_query = parse_qs(list_parts.query, keep_blank_values=True)
+
+        # AVM protects the recording with the same SID returned by
+        # X_AVM-DE_TAM:GetMessageList.
+        sid = list_query.get("sid", [])
+        if sid:
+            target_query["sid"] = sid
+
+        flat_query = []
+        for key, values in target_query.items():
+            for value in values:
+                flat_query.append((key, value))
+
+        return urlunparse(
+            (
+                scheme,
+                netloc,
+                target_path,
+                "",
+                urlencode(flat_query),
+                "",
+            )
+        )
+
     def _read_message_list(
         self,
         list_url: str,
@@ -291,6 +298,7 @@ class FritzAnsweringMachineManager:
                     duration=duration,
                     new=is_new,
                     path=path,
+                    playback_url=self._build_playback_url(list_url, path),
                 )
             )
 
