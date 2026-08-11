@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.1] - 2026-08-11
+
+### Fixed
+- Voicemail rows now disappear visually before the slow FRITZ!Box delete request starts.
+- Close the voicemail action menu immediately.
+- Yield two browser animation frames before invoking the backend service.
+
 ## [0.5.0] - 2026-08-11
 
 ### Added

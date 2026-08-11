@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.5.0**
+> Entwicklungsstand: **v0.5.1**
 
 ## Funktionen
 
@@ -509,3 +509,14 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   als auch alle aktuell vorhandenen AB-Sprachnachrichten auf der FRITZ!Box.
 - Auch `Clear all` gibt sofort optisches Feedback und blendet die Einträge
   während des Löschvorgangs aus.
+
+
+## v0.5.1
+
+- Beim Löschen einer AB-Nachricht wird die betroffene Zeile sofort direkt
+  im DOM ausgeblendet.
+- Das Drei-Punkte-Menü wird unmittelbar geschlossen.
+- Vor dem eigentlichen FRITZ!Box-Löschaufruf wartet die Karte zwei
+  `requestAnimationFrame`-Zyklen, damit der Browser die Änderung sichtbar
+  rendern kann.
+- Schlägt die Löschung fehl, wird die Nachricht wieder eingeblendet.

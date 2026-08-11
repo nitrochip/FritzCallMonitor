@@ -61,7 +61,8 @@ class CallMonitorTestCard extends HTMLElement {
       event.preventDefault();
       event.stopPropagation();
       this._deleteVoicemail(
-        deleteVoicemailButton.dataset.messageId || ""
+        deleteVoicemailButton.dataset.messageId || "",
+        deleteVoicemailButton.closest(".voicemail-row")
       );
       return;
     }
@@ -299,7 +300,7 @@ class CallMonitorTestCard extends HTMLElement {
     }
   }
 
-  async _deleteVoicemail(messageId) {
+  async _deleteVoicemail(messageId, rowElement = null) {
     if (!this._hass || !messageId) return;
 
     this._openVoicemailMenuId = null;
@@ -320,8 +321,21 @@ class CallMonitorTestCard extends HTMLElement {
       this._voicemailIsPlaying = false;
     }
 
-    // Immediate visual feedback: remove row before the FRITZ!Box request ends.
+    // Immediate feedback even before the complete card gets rebuilt.
+    if (rowElement) {
+      rowElement.style.display = "none";
+    }
+
+    // Close the three-dot menu and rebuild the card without this row.
     this._render();
+
+    // Explicitly give the browser time to paint the updated DOM before
+    // starting the comparatively slow FRITZ!Box request.
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
 
     try {
       await this._hass.callService(
@@ -329,7 +343,7 @@ class CallMonitorTestCard extends HTMLElement {
         "delete_voicemail",
         { message_id: messageId }
       );
-      // Keep the ID hidden until the next HA state update confirms deletion.
+      // Keep the ID hidden until HA confirms that the message is really gone.
     } catch (error) {
       this._optimisticallyDeletedVoicemailIds.delete(messageId);
       this._voicemailDeleteError =
