@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.2] - 2026-08-11
+
+### Fixed
+- Media Source no longer selects internal boolean markers from `hass.data`.
+- The actual FritzCallMonitor sensor is selected by its `answering_machine` attribute.
+- Applied the same defensive lookup to the voicemail audio HTTP view.
+
 ## [0.4.1] - 2026-08-11
 
 ### Fixed / Diagnostic

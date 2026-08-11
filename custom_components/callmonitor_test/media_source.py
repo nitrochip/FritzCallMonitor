@@ -30,8 +30,16 @@ class FritzCallMonitorMediaSource(MediaSource):
         self.hass = hass
 
     def _sensor(self):
+        """Return the FritzCallMonitor sensor object, ignoring internal markers."""
         entries = self.hass.data.get(DOMAIN, {})
-        return next(iter(entries.values()), None)
+        return next(
+            (
+                value
+                for value in entries.values()
+                if hasattr(value, "answering_machine")
+            ),
+            None,
+        )
 
     async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
         sensor = self._sensor()

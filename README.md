@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.1**
+> Entwicklungsstand: **v0.4.2**
 
 ## Funktionen
 
@@ -415,3 +415,11 @@ Das Frontend signiert diesen Pfad über den offiziellen WebSocket-Befehl
 `auth/sign_path` und spielt anschließend die signierte URL ab.
 
 Fehler beim Auflösen, Signieren oder Laden werden direkt in der Karte angezeigt.
+
+
+## v0.4.2 – Playbutton Bugfix
+
+Behebt einen Fehler bei der Auswahl des FritzCallMonitor-Sensors in der
+Media-Source. Interne Werte wie der boolesche Marker für die registrierte
+Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
+`answering_machine` verwendet.

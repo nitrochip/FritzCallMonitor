@@ -22,7 +22,14 @@ class FritzCallMonitorVoicemailAudioView(HomeAssistantView):
 
     async def get(self, request, message_id: str):
         hass: HomeAssistant = request.app["hass"]
-        sensor = next(iter(hass.data.get(DOMAIN, {}).values()), None)
+        sensor = next(
+            (
+                value
+                for value in hass.data.get(DOMAIN, {}).values()
+                if hasattr(value, "answering_machine")
+            ),
+            None,
+        )
         if sensor is None:
             raise web.HTTPNotFound()
 
