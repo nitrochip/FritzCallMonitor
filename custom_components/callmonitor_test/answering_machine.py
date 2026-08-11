@@ -103,6 +103,37 @@ class FritzAnsweringMachineManager:
         self._machines = machines
         self._last_sync = datetime.now().astimezone()
 
+    async def async_delete_message(self, message_id: str) -> bool:
+        """Delete one voicemail message on the FRITZ!Box and refresh the list."""
+        message = self.get_message(str(message_id or "").strip())
+        if message is None:
+            return False
+
+        await self._hass.async_add_executor_job(
+            self._delete_message_blocking,
+            message.tam_index,
+            message.index,
+        )
+        await self.async_sync()
+        return True
+
+    def _delete_message_blocking(
+        self,
+        tam_index: int,
+        message_index: str,
+    ) -> None:
+        fc = FritzConnection(
+            address=self._host,
+            user=self._username,
+            password=self._password,
+        )
+        fc.call_action(
+            TAM_SERVICE,
+            "DeleteMessage",
+            NewIndex=int(tam_index),
+            NewMessageIndex=str(message_index),
+        )
+
     async def async_get_audio(self, message_id: str) -> tuple[bytes, str]:
         """Download one voicemail recording server-side from the FRITZ!Box."""
         message = self.get_message(message_id)

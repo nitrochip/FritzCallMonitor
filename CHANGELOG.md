@@ -2,6 +2,14 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.9] - 2026-08-11
+
+### Added
+- Three-dot action menu for voicemail rows while keeping Play/Pause directly visible.
+- `Kontakt hinzufügen` inside the voicemail menu for unknown callers.
+- Functional `Löschen` action for individual FRITZ!Box voicemail recordings.
+- New `callmonitor_test.delete_voicemail` service.
+
 ## [0.4.8] - 2026-08-11
 
 ### Fixed

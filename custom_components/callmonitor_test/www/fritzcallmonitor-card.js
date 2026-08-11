@@ -39,6 +39,30 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const voicemailMenuButton =
+      event.target.closest("[data-action='toggle-voicemail-menu']");
+    if (voicemailMenuButton && this.contains(voicemailMenuButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const messageId = voicemailMenuButton.dataset.messageId || "";
+      this._openVoicemailMenuId =
+        this._openVoicemailMenuId === messageId ? null : messageId;
+      this._openMenuCallId = null;
+      this._render();
+      return;
+    }
+
+    const deleteVoicemailButton =
+      event.target.closest("[data-action='delete-voicemail']");
+    if (deleteVoicemailButton && this.contains(deleteVoicemailButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._deleteVoicemail(
+        deleteVoicemailButton.dataset.messageId || ""
+      );
+      return;
+    }
+
     const addVoicemailContactButton =
       event.target.closest("[data-action='add-voicemail-contact']");
     if (addVoicemailContactButton && this.contains(addVoicemailContactButton)) {
@@ -67,6 +91,7 @@ class CallMonitorTestCard extends HTMLElement {
       const callId = menuButton.dataset.callId || "";
       this._openMenuCallId =
         this._openMenuCallId === callId ? null : callId;
+      this._openVoicemailMenuId = null;
       this._render();
       return;
     }
@@ -252,6 +277,39 @@ class CallMonitorTestCard extends HTMLElement {
     } catch (error) {
       console.error(
         "FritzCallMonitor: Anrufliste konnte nicht gelöscht werden.",
+        error
+      );
+    }
+  }
+
+  async _deleteVoicemail(messageId) {
+    if (!this._hass || !messageId) return;
+
+    try {
+      if (
+        this._voicemailPlayingId &&
+        this._voicemailAudio &&
+        this._voicemailPlayingId ===
+          `media-source://callmonitor_test/${messageId}`
+      ) {
+        this._voicemailAudio.pause();
+        this._voicemailAudio.removeAttribute("src");
+        this._voicemailAudio.load();
+        this._voicemailAudio = null;
+        this._voicemailPlayingId = "";
+        this._voicemailIsPlaying = false;
+      }
+
+      await this._hass.callService(
+        "callmonitor_test",
+        "delete_voicemail",
+        { message_id: messageId }
+      );
+
+      this._openVoicemailMenuId = null;
+    } catch (error) {
+      console.error(
+        "FritzCallMonitor: AB-Nachricht konnte nicht gelöscht werden.",
         error
       );
     }
@@ -830,53 +888,83 @@ class CallMonitorTestCard extends HTMLElement {
             </div>
 
             <div class="voicemail-actions">
-              ${
-                canAddVoicemailContact
-                  ? `
-                    <button
-                      class="row-action"
-                      data-action="add-voicemail-contact"
-                      data-number="${this._escape(voicemailNumber)}"
-                      type="button"
-                      title="Kontakt hinzufügen"
-                      aria-label="Kontakt hinzufügen"
-                    >
-                      <ha-icon icon="mdi:account-plus-outline"></ha-icon>
-                    </button>
-                  `
-                  : ""
-              }
-
               <button
                 class="row-action"
                 data-action="play-voicemail"
                 data-media-source="${this._escape(message.media_source_id || "")}"
                 type="button"
-              title="${
-                this._voicemailPlayingId === message.media_source_id &&
-                this._voicemailIsPlaying
-                  ? "Nachricht pausieren"
-                  : "Nachricht abspielen"
-              }"
-              aria-label="${
-                this._voicemailPlayingId === message.media_source_id &&
-                this._voicemailIsPlaying
-                  ? "Nachricht pausieren"
-                  : "Nachricht abspielen"
-              }"
-              ${loading ? "disabled" : ""}
-            >
-              <ha-icon icon="${
-                loading
-                  ? "mdi:loading"
-                  : (
-                      this._voicemailPlayingId === message.media_source_id &&
-                      this._voicemailIsPlaying
-                        ? "mdi:pause-circle-outline"
-                        : "mdi:play-circle-outline"
-                    )
-              }"></ha-icon>
+                title="${
+                  this._voicemailPlayingId === message.media_source_id &&
+                  this._voicemailIsPlaying
+                    ? "Nachricht pausieren"
+                    : "Nachricht abspielen"
+                }"
+                aria-label="${
+                  this._voicemailPlayingId === message.media_source_id &&
+                  this._voicemailIsPlaying
+                    ? "Nachricht pausieren"
+                    : "Nachricht abspielen"
+                }"
+                ${loading ? "disabled" : ""}
+              >
+                <ha-icon icon="${
+                  loading
+                    ? "mdi:loading"
+                    : (
+                        this._voicemailPlayingId === message.media_source_id &&
+                        this._voicemailIsPlaying
+                          ? "mdi:pause-circle-outline"
+                          : "mdi:play-circle-outline"
+                      )
+                }"></ha-icon>
               </button>
+
+              <div class="row-menu-wrap">
+                <button
+                  class="row-action"
+                  data-action="toggle-voicemail-menu"
+                  data-message-id="${this._escape(message.message_id || "")}"
+                  type="button"
+                  title="Weitere Aktionen"
+                  aria-label="Weitere Aktionen"
+                >
+                  <ha-icon icon="mdi:dots-vertical"></ha-icon>
+                </button>
+
+                ${
+                  this._openVoicemailMenuId === message.message_id
+                    ? `
+                      <div class="row-menu">
+                        ${
+                          canAddVoicemailContact
+                            ? `
+                              <button
+                                class="menu-item"
+                                data-action="add-voicemail-contact"
+                                data-number="${this._escape(voicemailNumber)}"
+                                type="button"
+                              >
+                                <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                                <span>Kontakt hinzufügen</span>
+                              </button>
+                            `
+                            : ""
+                        }
+
+                        <button
+                          class="menu-item danger"
+                          data-action="delete-voicemail"
+                          data-message-id="${this._escape(message.message_id || "")}"
+                          type="button"
+                        >
+                          <ha-icon icon="mdi:delete-outline"></ha-icon>
+                          <span>Löschen</span>
+                        </button>
+                      </div>
+                    `
+                    : ""
+                }
+              </div>
             </div>
           </div>
         `;
@@ -973,22 +1061,6 @@ class CallMonitorTestCard extends HTMLElement {
               </div>
             </div>
             <div class="voicemail-actions">
-              ${
-                canAddVoicemailContact
-                  ? `
-                    <button
-                      class="row-action"
-                      data-action="add-voicemail-contact"
-                      data-number="${this._escape(voicemailNumber)}"
-                      type="button"
-                      title="Kontakt hinzufügen"
-                      aria-label="Kontakt hinzufügen"
-                    >
-                      <ha-icon icon="mdi:account-plus-outline"></ha-icon>
-                    </button>
-                  `
-                  : ""
-              }
               <button
                 class="row-action"
                 data-action="play-voicemail"
@@ -1019,6 +1091,53 @@ class CallMonitorTestCard extends HTMLElement {
                       )
                 }"></ha-icon>
               </button>
+
+              <div class="row-menu-wrap">
+                <button
+                  class="row-action"
+                  data-action="toggle-voicemail-menu"
+                  data-message-id="${this._escape(message.message_id || "")}"
+                  type="button"
+                  title="Weitere Aktionen"
+                  aria-label="Weitere Aktionen"
+                >
+                  <ha-icon icon="mdi:dots-vertical"></ha-icon>
+                </button>
+
+                ${
+                  this._openVoicemailMenuId === message.message_id
+                    ? `
+                      <div class="row-menu">
+                        ${
+                          canAddVoicemailContact
+                            ? `
+                              <button
+                                class="menu-item"
+                                data-action="add-voicemail-contact"
+                                data-number="${this._escape(voicemailNumber)}"
+                                type="button"
+                              >
+                                <ha-icon icon="mdi:account-plus-outline"></ha-icon>
+                                <span>Kontakt hinzufügen</span>
+                              </button>
+                            `
+                            : ""
+                        }
+
+                        <button
+                          class="menu-item danger"
+                          data-action="delete-voicemail"
+                          data-message-id="${this._escape(message.message_id || "")}"
+                          type="button"
+                        >
+                          <ha-icon icon="mdi:delete-outline"></ha-icon>
+                          <span>Löschen</span>
+                        </button>
+                      </div>
+                    `
+                    : ""
+                }
+              </div>
             </div>
           </div>
         `,

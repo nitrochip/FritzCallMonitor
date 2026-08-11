@@ -50,3 +50,14 @@ sync_answering_machine:
   name: Anrufbeantworter synchronisieren
   description: Liest Anrufbeantworter und Nachrichten neu aus der FRITZ!Box ein.
 
+
+delete_voicemail:
+  name: AB-Nachricht löschen
+  description: Löscht genau eine Sprachnachricht vom FRITZ!Box-Anrufbeantworter.
+  fields:
+    message_id:
+      name: Nachrichten-ID
+      description: Interne eindeutige ID der AB-Nachricht.
+      required: true
+      selector:
+        text:

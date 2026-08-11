@@ -534,6 +534,26 @@ class CallMonitorTestSensor(SensorEntity):
         self._write_voicemail_state()
         self.async_write_ha_state()
 
+    async def async_delete_voicemail(self, message_id: str) -> bool:
+        """Delete one voicemail recording from the FRITZ!Box."""
+        deleted = await self._answering_machine.async_delete_message(message_id)
+        if not deleted:
+            return False
+
+        # Re-apply current phonebook names to the freshly loaded voicemail list.
+        for message in self._answering_machine.message_objects:
+            contact = self._phonebook.lookup(message.caller)
+            message.caller_name = (
+                contact.name if contact is not None else None
+            )
+
+        if self._voicemail_sensor is not None:
+            self._voicemail_sensor.clear_error()
+
+        self._write_voicemail_state()
+        self.async_write_ha_state()
+        return True
+
     async def async_delete_call(self, call_id: str) -> bool:
         """Delete exactly one stored call by its unique ID."""
         target_id = str(call_id or "").strip()

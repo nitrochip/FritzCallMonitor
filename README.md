@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.8**
+> Entwicklungsstand: **v0.4.9**
 
 ## Funktionen
 
@@ -487,3 +487,13 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   synchronisierte FRITZ!Box-Telefonbuch abgeglichen.
 - Dadurch wechselt eine unbekannte Voicemail direkt von Telefonnummer +
   Kontakt-Button auf den neuen Kontaktnamen.
+
+
+## v0.4.9
+
+- AB-Nachrichten besitzen weiterhin einen direkt sichtbaren Play/Pause-Button.
+- Daneben befindet sich jetzt ein Drei-Punkte-Menü.
+- Bei unbekannter Rufnummer enthält das Menü `Kontakt hinzufügen`.
+- Das Menü enthält außerdem `Löschen`.
+- `Löschen` entfernt die konkrete Nachricht vom FRITZ!Box-Anrufbeantworter
+  und synchronisiert die AB-Liste anschließend sofort neu.
