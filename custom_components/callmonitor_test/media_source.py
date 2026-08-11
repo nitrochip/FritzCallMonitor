@@ -42,14 +42,10 @@ class FritzCallMonitorMediaSource(MediaSource):
         if message is None or not message.path:
             raise Unresolvable("AB-Nachricht wurde nicht gefunden.")
 
-        suffix = PurePosixPath(message.path.split("?", 1)[0]).suffix.lower()
-        mime_type = {
-            ".wav": "audio/wav",
-            ".mp3": "audio/mpeg",
-            ".ogg": "audio/ogg",
-        }.get(suffix, "audio/wav")
-
-        return PlayMedia(message.path, mime_type)
+        return PlayMedia(
+            f"/api/callmonitor_test/voicemail/{message.message_id}",
+            "audio/wav",
+        )
 
     async def async_browse_media(
         self,

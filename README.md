@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.7**
+> Entwicklungsstand: **v0.3.8**
 
 ## Funktionen
 
@@ -382,3 +382,13 @@ Anrufbeantworter angenommenen Gespräch.
 
 v0.3.7 liest ausschließlich. Löschen und Ändern von AB-Nachrichten folgt
 nach erfolgreichem Praxistest.
+
+
+## Änderungen v0.3.8
+
+- Der separate Filter `Nachrichten` wurde entfernt.
+- Echte AB-Nachrichten erscheinen direkt unter `Anrufbeantworter`.
+- Existiert zu einem vom AB angenommenen Anruf eine Nachricht, ersetzt die Nachricht den reinen Call-Monitor-Eintrag.
+- AB-Nachrichten haben direkt Play und Löschen.
+- AVM-Dauerangaben wie `0:01` werden als eine Minute interpretiert.
+- Audio wird authentifiziert durch Home Assistant geproxyt.

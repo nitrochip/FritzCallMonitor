@@ -4,11 +4,32 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from homeassistant.components.http import StaticPathConfig
+from aiohttp import web
+
+from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DOMAIN, PLATFORMS, SERVICE_ADD_CONTACT, SERVICE_CLEAR_CALLS, SERVICE_DELETE_CALL, SERVICE_SYNC_ANSWERING_MACHINE, SERVICE_SYNC_PHONEBOOK, STATIC_URL
+from .const import DOMAIN, PLATFORMS, SERVICE_ADD_CONTACT, SERVICE_CLEAR_CALLS, SERVICE_DELETE_CALL, SERVICE_DELETE_VOICEMAIL, SERVICE_SYNC_ANSWERING_MACHINE, SERVICE_SYNC_PHONEBOOK, STATIC_URL
+
+
+class FritzCallMonitorVoicemailView(HomeAssistantView):
+    """Proxy voicemail audio through Home Assistant."""
+
+    url = "/api/callmonitor_test/voicemail/{message_id}"
+    name = "api:callmonitor_test:voicemail"
+    requires_auth = True
+
+    async def get(self, request, message_id: str):
+        hass: HomeAssistant = request.app["hass"]
+        sensor = next(iter(hass.data.get(DOMAIN, {}).values()), None)
+        if sensor is None:
+            raise web.HTTPNotFound()
+        try:
+            data, content_type = await sensor.answering_machine.async_get_audio(message_id)
+        except Exception as error:
+            raise web.HTTPNotFound(text=str(error)) from error
+        return web.Response(body=data, content_type=content_type, headers={"Cache-Control": "no-store"})
 
 
 async def async_setup_entry(
@@ -30,6 +51,7 @@ async def async_setup_entry(
     )
 
     hass.data.setdefault(DOMAIN, {})
+    hass.http.register_view(FritzCallMonitorVoicemailView())
 
     async def async_clear_calls(call: ServiceCall) -> None:
         """Clear the persisted and displayed incoming-call history."""
@@ -64,6 +86,12 @@ async def async_setup_entry(
         sensor = hass.data[DOMAIN].get(entry.entry_id)
         if sensor is not None:
             await sensor.async_delete_call(str(call.data["call_id"]))
+
+    async def async_delete_voicemail(call: ServiceCall) -> None:
+        """Delete one voicemail from the FRITZ!Box."""
+        sensor = hass.data[DOMAIN].get(entry.entry_id)
+        if sensor is not None:
+            await sensor.async_delete_voicemail(str(call.data["message_id"]))
 
     if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_CALLS):
         hass.services.async_register(
@@ -100,6 +128,13 @@ async def async_setup_entry(
             async_delete_call,
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_DELETE_VOICEMAIL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DELETE_VOICEMAIL,
+            async_delete_voicemail,
+        )
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -127,5 +162,7 @@ async def async_unload_entry(
             hass.services.async_remove(DOMAIN, SERVICE_ADD_CONTACT)
         if hass.services.has_service(DOMAIN, SERVICE_DELETE_CALL):
             hass.services.async_remove(DOMAIN, SERVICE_DELETE_CALL)
+        if hass.services.has_service(DOMAIN, SERVICE_DELETE_VOICEMAIL):
+            hass.services.async_remove(DOMAIN, SERVICE_DELETE_VOICEMAIL)
 
     return unload_ok

@@ -98,6 +98,41 @@ class FritzAnsweringMachineManager:
         self._machines = machines
         self._last_sync = datetime.now().astimezone()
 
+    async def async_get_audio(self, message_id: str) -> tuple[bytes, str]:
+        """Download one voicemail recording through the FRITZ!Box session URL."""
+        message = self.get_message(message_id)
+        if message is None or not message.path:
+            raise RuntimeError("AB-Nachricht wurde nicht gefunden.")
+        return await self._hass.async_add_executor_job(self._get_audio_blocking, message.path)
+
+    @staticmethod
+    def _get_audio_blocking(path: str) -> tuple[bytes, str]:
+        with urlopen(path, timeout=15) as response:
+            data = response.read()
+            content_type = response.headers.get_content_type() or "audio/wav"
+        if not data:
+            raise RuntimeError("Leere Audiodatei von der FRITZ!Box empfangen.")
+        return data, content_type
+
+    async def async_delete_message(self, message_id: str) -> None:
+        """Delete one voicemail on the FRITZ!Box and refresh."""
+        message = self.get_message(message_id)
+        if message is None:
+            raise RuntimeError("AB-Nachricht wurde nicht gefunden.")
+        await self._hass.async_add_executor_job(
+            self._delete_message_blocking, message.tam_index, message.index
+        )
+        await self.async_sync()
+
+    def _delete_message_blocking(self, tam_index: int, message_index: str) -> None:
+        fc = FritzConnection(address=self._host, user=self._username, password=self._password)
+        fc.call_action(
+            TAM_SERVICE,
+            "DeleteMessage",
+            NewIndex=tam_index,
+            NewMessageIndex=int(message_index),
+        )
+
     def _sync_blocking(
         self,
     ) -> tuple[list[AnsweringMachineMessage], list[AnsweringMachineInfo]]:

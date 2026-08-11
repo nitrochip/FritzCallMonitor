@@ -2,6 +2,22 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.8] - 2026-08-11
+
+### Fixed
+- Voicemail playback uses an authenticated Home Assistant audio proxy.
+- AVM `h:mm` voicemail duration is converted correctly.
+
+### Changed
+- Removed separate `Nachrichten` filter.
+- Voicemails appear directly in `Anrufbeantworter`.
+- Matched answering-machine calls are replaced by their voicemail messages.
+- Voicemail rows use Play and Delete buttons.
+
+### Added
+- `callmonitor_test.delete_voicemail` action.
+- Authenticated voicemail audio endpoint.
+
 ## [0.3.7] - 2026-08-11
 
 ### Added
