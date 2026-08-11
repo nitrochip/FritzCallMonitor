@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.5**
+> Entwicklungsstand: **v0.3.7**
 
 ## Funktionen
 
@@ -354,3 +354,31 @@ nicht mehr die Abschlussphase des Home-Assistant-Starts.
 Das Drei-Punkte-Menü öffnet jetzt nach oben und die Kartencontainer erlauben
 sichtbaren Überlauf. Dadurch wird das Menü am unteren Kartenrand nicht mehr
 abgeschnitten.
+
+
+## AB-Nachrichten – neue Architektur ab v0.3.7
+
+Die AB-Daten werden über eine eigene Entität bereitgestellt:
+
+```text
+sensor.fritzcallmonitor_anrufbeantworter
+```
+
+Jede Aufnahme erhält eine native Home-Assistant-Media-Source-ID:
+
+```text
+media-source://callmonitor_test/<message_id>
+```
+
+Die Karte enthält den zusätzlichen Filter `Nachrichten`. Dort können
+eingelesene Nachrichten über eine Play-Schaltfläche mit dem integrierten
+Audioplayer wiedergegeben werden.
+
+Die Roh-URL der FRITZ!Box-Aufnahme wird bewusst nicht als Sensorattribut
+veröffentlicht.
+
+Synchronisierung: beim Start, alle fünf Minuten und nach einem vom
+Anrufbeantworter angenommenen Gespräch.
+
+v0.3.7 liest ausschließlich. Löschen und Ändern von AB-Nachrichten folgt
+nach erfolgreichem Praxistest.

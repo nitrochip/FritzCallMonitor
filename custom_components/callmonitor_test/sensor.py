@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from .phonebook import FritzPhonebookManager
+from .answering_machine import FritzAnsweringMachineManager
 from .const import (
     CONF_ANSWERING_MACHINE_EXTENSION,
     CONF_HOST,
@@ -25,6 +26,7 @@ from .const import (
     DEFAULT_MAX_STORED_CALLS,
     DOMAIN,
     PHONEBOOK_SYNC_HOURS,
+    ANSWERING_MACHINE_SYNC_MINUTES,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -65,9 +67,11 @@ def parse_line(line: str) -> tuple[str, datetime, list[str]]:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     sensor = CallMonitorTestSensor(hass, entry)
+    voicemail_sensor = FritzCallMonitorVoicemailSensor(sensor)
+    sensor.attach_voicemail_sensor(voicemail_sensor)
     await sensor.async_initialize()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = sensor
-    async_add_entities([sensor])
+    async_add_entities([sensor, voicemail_sensor])
 
 class CallMonitorTestSensor(SensorEntity):
     _attr_name = "FritzCallMonitor Anrufstatus"
@@ -90,6 +94,13 @@ class CallMonitorTestSensor(SensorEntity):
             password=entry.data.get(CONF_PASSWORD, ""),
             country_code=self._country_code,
         )
+        self._answering_machine = FritzAnsweringMachineManager(
+            hass=hass,
+            host=self._host,
+            username=entry.data.get(CONF_USERNAME, ""),
+            password=entry.data.get(CONF_PASSWORD, ""),
+        )
+        self._voicemail_sensor = None
         self._state = "Bereit"
         self._available = False
         self._attributes: dict[str, Any] = {
@@ -108,6 +119,7 @@ class CallMonitorTestSensor(SensorEntity):
         self._task: asyncio.Task | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._phonebook_unsub = None
+        self._answering_machine_unsub = None
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def async_initialize(self) -> None:
@@ -179,6 +191,17 @@ class CallMonitorTestSensor(SensorEntity):
         self._sync_calls_attribute()
 
     @property
+    def answering_machine(self) -> FritzAnsweringMachineManager:
+        return self._answering_machine
+
+    def attach_voicemail_sensor(self, voicemail_sensor) -> None:
+        self._voicemail_sensor = voicemail_sensor
+
+    def _write_voicemail_state(self) -> None:
+        if self._voicemail_sensor is not None and self._voicemail_sensor.hass is not None:
+            self._voicemail_sensor.async_write_ha_state()
+
+    @property
     def native_value(self) -> str:
         return self._state
 
@@ -207,10 +230,30 @@ class CallMonitorTestSensor(SensorEntity):
                 timedelta(hours=PHONEBOOK_SYNC_HOURS),
             )
 
+        if self._answering_machine.enabled:
+            self._entry.async_create_background_task(
+                self.hass,
+                self.async_sync_answering_machine(),
+                "FritzCallMonitor AB startup sync",
+            )
+
+            async def _scheduled_answering_machine_sync(now) -> None:
+                await self.async_sync_answering_machine()
+
+            self._answering_machine_unsub = async_track_time_interval(
+                self.hass,
+                _scheduled_answering_machine_sync,
+                timedelta(minutes=ANSWERING_MACHINE_SYNC_MINUTES),
+            )
+
     async def async_will_remove_from_hass(self) -> None:
         if self._phonebook_unsub is not None:
             self._phonebook_unsub()
             self._phonebook_unsub = None
+
+        if self._answering_machine_unsub is not None:
+            self._answering_machine_unsub()
+            self._answering_machine_unsub = None
 
         if self._writer is not None:
             self._writer.close()
@@ -354,7 +397,45 @@ class CallMonitorTestSensor(SensorEntity):
             caller_name=call.caller_name,
             call_id=uuid4().hex,
         ))
+
+        if call.answered_by_answering_machine and self._answering_machine.enabled:
+            async def _delayed_ab_sync() -> None:
+                await asyncio.sleep(3)
+                await self.async_sync_answering_machine()
+
+            self._entry.async_create_background_task(
+                self.hass,
+                _delayed_ab_sync(),
+                "FritzCallMonitor AB refresh after call",
+            )
+
         self.async_write_ha_state()
+
+    async def async_sync_answering_machine(self) -> None:
+        """Synchronize voicemail metadata from the FRITZ!Box."""
+        if not self._answering_machine.enabled:
+            self._write_voicemail_state()
+            return
+
+        try:
+            await self._answering_machine.async_sync()
+            for message in self._answering_machine.message_objects:
+                contact = self._phonebook.lookup(message.caller)
+                message.caller_name = (
+                    contact.name if contact is not None else None
+                )
+        except Exception as error:
+            LOGGER.warning(
+                "Anrufbeantworter konnte nicht synchronisiert werden: %s",
+                error,
+            )
+            if self._voicemail_sensor is not None:
+                self._voicemail_sensor.set_error(str(error))
+        else:
+            if self._voicemail_sensor is not None:
+                self._voicemail_sensor.clear_error()
+
+        self._write_voicemail_state()
 
     async def async_sync_phonebook(self) -> None:
         """Manually synchronize the FRITZ!Box phonebooks."""
@@ -474,3 +555,61 @@ class CallMonitorTestSensor(SensorEntity):
     def _sync_calls_attribute(self) -> None:
         self._attributes["calls"] = [call.as_dict() for call in self._calls]
         self._attributes["gespeicherte_anrufe"] = len(self._calls)
+
+
+class FritzCallMonitorVoicemailSensor(SensorEntity):
+    """Dedicated FritzCallMonitor voicemail entity."""
+
+    _attr_name = "FritzCallMonitor Anrufbeantworter"
+    _attr_unique_id = "callmonitor_test_voicemail"
+    _attr_icon = "mdi:voicemail"
+    _attr_should_poll = False
+
+    def __init__(self, owner: CallMonitorTestSensor) -> None:
+        self._owner = owner
+        self._error: str | None = None
+
+    @property
+    def native_value(self) -> int:
+        return self._owner.answering_machine.message_count
+
+    @property
+    def available(self) -> bool:
+        return self._owner.answering_machine.enabled and self._error is None
+
+    def set_error(self, error: str) -> None:
+        self._error = error
+
+    def clear_error(self) -> None:
+        self._error = None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        manager = self._owner.answering_machine
+        messages: list[dict[str, object]] = []
+
+        for item in manager.message_objects:
+            data = item.as_dict()
+            data["media_source_id"] = f"media-source://{DOMAIN}/{item.message_id}"
+            data.pop("path", None)
+            messages.append(data)
+
+        attrs: dict[str, Any] = {
+            "status": (
+                "Fehler" if self._error
+                else "verbunden" if manager.enabled
+                else "nicht konfiguriert"
+            ),
+            "nachrichten": messages,
+            "nachrichten_anzahl": manager.message_count,
+            "neue_nachrichten": manager.new_message_count,
+            "anrufbeantworter": manager.answering_machines,
+            "sync_intervall_minuten": ANSWERING_MACHINE_SYNC_MINUTES,
+        }
+
+        if manager.last_sync is not None:
+            attrs["letzte_synchronisierung"] = manager.last_sync.isoformat()
+        if self._error:
+            attrs["fehler"] = self._error
+
+        return attrs

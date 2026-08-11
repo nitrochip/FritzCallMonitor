@@ -2,6 +2,21 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.7] - 2026-08-11
+
+### Added
+- Separate `FritzCallMonitor Anrufbeantworter` sensor entity.
+- Native Home Assistant Media Source for voicemail recordings.
+- Stable hashed voicemail message IDs.
+- Phonebook lookup for voicemail callers.
+- `Nachrichten` dashboard view with integrated audio playback.
+- Automatic voicemail sync at startup, every five minutes and after TAM calls.
+- Manual `callmonitor_test.sync_answering_machine` action.
+
+### Changed
+- Voicemail data is separated from the call-status sensor.
+- Raw FRITZ!Box recording URLs are not exposed to Lovelace state attributes.
+
 ## [0.3.5] - 2026-08-11
 
 ### Fixed

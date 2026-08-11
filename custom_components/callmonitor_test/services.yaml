@@ -46,3 +46,7 @@ delete_call:
       selector:
         text:
 
+sync_answering_machine:
+  name: Anrufbeantworter synchronisieren
+  description: Liest Anrufbeantworter und Nachrichten neu aus der FRITZ!Box ein.
+

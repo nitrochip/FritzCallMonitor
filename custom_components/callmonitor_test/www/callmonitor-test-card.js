@@ -39,6 +39,14 @@ class CallMonitorTestCard extends HTMLElement {
   }
 
   _handleClick(event) {
+    const playButton = event.target.closest("[data-action='play-voicemail']");
+    if (playButton && this.contains(playButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._playVoicemail(playButton.dataset.mediaSource || "");
+      return;
+    }
+
     const menuButton = event.target.closest("[data-action='toggle-menu']");
     if (menuButton && this.contains(menuButton)) {
       event.preventDefault();
@@ -104,6 +112,42 @@ class CallMonitorTestCard extends HTMLElement {
     if (!filter || filter === this._activeFilter) return;
 
     this._activeFilter = filter;
+    this._render();
+  }
+
+  async _playVoicemail(mediaSourceId) {
+    if (!this._hass || !mediaSourceId) return;
+
+    this._voicemailLoading = mediaSourceId;
+    this._voicemailError = "";
+    this._render();
+
+    try {
+      const result = await this._hass.callWS({
+        type: "media_source/resolve_media",
+        media_content_id: mediaSourceId,
+      });
+
+      let url = result?.url || "";
+      if (url && !/^https?:\/\//i.test(url)) {
+        url = this._hass.hassUrl(url);
+      }
+
+      this._voicemailAudio = {
+        mediaSourceId,
+        url,
+        mimeType: result?.mime_type || "audio/wav",
+      };
+      this._voicemailLoading = "";
+    } catch (error) {
+      console.error(
+        "FritzCallMonitor: AB-Nachricht konnte nicht geladen werden.",
+        error
+      );
+      this._voicemailLoading = "";
+      this._voicemailError = "Nachricht konnte nicht geladen werden.";
+    }
+
     this._render();
   }
 
@@ -274,6 +318,7 @@ class CallMonitorTestCard extends HTMLElement {
       { id: "all", label: "Alle" },
       { id: "missed", label: "Verpasst" },
       { id: "answering_machine", label: "Anrufbeantworter" },
+      { id: "voicemail", label: "Nachrichten" },
     ];
 
     const filterButtons = filters
@@ -297,6 +342,14 @@ class CallMonitorTestCard extends HTMLElement {
 
     const phonebooks = Array.isArray(stateObj?.attributes?.telefonbuch_liste)
       ? stateObj.attributes.telefonbuch_liste
+      : [];
+
+    const voicemailEntity =
+      this.config.voicemail_entity ||
+      "sensor.fritzcallmonitor_anrufbeantworter";
+    const voicemailState = this._hass.states[voicemailEntity];
+    const voicemails = Array.isArray(voicemailState?.attributes?.nachrichten)
+      ? voicemailState.attributes.nachrichten
       : [];
 
     const rows = visibleCalls
@@ -394,6 +447,68 @@ class CallMonitorTestCard extends HTMLElement {
       })
       .join("");
 
+    const voicemailRows = voicemails
+      .slice(0, maxCalls)
+      .map((message) => {
+        const caller =
+          message.caller_name ||
+          message.name ||
+          message.caller ||
+          "Unbekannter Anrufer";
+        const duration = message.duration
+          ? ` · ${this._escape(message.duration)}`
+          : "";
+        const newLabel = message.new ? " · Neu" : "";
+        const loading =
+          this._voicemailLoading === message.media_source_id;
+
+        return `
+          <div class="call-row voicemail-row">
+            <div class="icon-badge" style="--call-color:var(--info-color, #2196f3)">
+              <ha-icon icon="mdi:voicemail"></ha-icon>
+            </div>
+
+            <div class="call-main">
+              <div class="caller">${this._escape(caller)}</div>
+              <div class="call-details">
+                ${this._escape(message.date || "")}${duration}${newLabel}
+              </div>
+            </div>
+
+            <button
+              class="row-action"
+              data-action="play-voicemail"
+              data-media-source="${this._escape(message.media_source_id || "")}"
+              type="button"
+              title="Nachricht abspielen"
+              aria-label="Nachricht abspielen"
+              ${loading ? "disabled" : ""}
+            >
+              <ha-icon icon="${loading ? "mdi:loading" : "mdi:play-circle-outline"}"></ha-icon>
+            </button>
+          </div>
+        `;
+      })
+      .join("");
+
+    const voicemailPlayer =
+      this._activeFilter === "voicemail" && this._voicemailAudio?.url
+        ? `
+          <div class="voicemail-player">
+            <audio
+              controls
+              autoplay
+              src="${this._escape(this._voicemailAudio.url)}"
+            ></audio>
+          </div>
+        `
+        : "";
+
+    const voicemailError =
+      this._activeFilter === "voicemail" && this._voicemailError
+        ? `<div class="empty">${this._escape(this._voicemailError)}</div>`
+        : "";
+
     const phonebookOptions = phonebooks
       .map(
         (book) =>
@@ -483,9 +598,18 @@ class CallMonitorTestCard extends HTMLElement {
 
         <div class="card-content">
           ${
-            rows ||
-            '<div class="empty">Keine passenden Anrufe vorhanden.</div>'
+            this._activeFilter === "voicemail"
+              ? (
+                  voicemailRows ||
+                  '<div class="empty">Keine AB-Nachrichten vorhanden.</div>'
+                )
+              : (
+                  rows ||
+                  '<div class="empty">Keine passenden Anrufe vorhanden.</div>'
+                )
           }
+          ${voicemailPlayer}
+          ${voicemailError}
         </div>
       </ha-card>
       ${contactDialog}
@@ -686,6 +810,23 @@ class CallMonitorTestCard extends HTMLElement {
 
         .row-action ha-icon {
           --mdc-icon-size: 21px;
+        }
+
+        .voicemail-player {
+          padding: 10px 0 14px;
+        }
+
+        .voicemail-player audio {
+          width: 100%;
+        }
+
+        .voicemail-row .row-action[disabled] ha-icon {
+          animation: fcm-spin 1s linear infinite;
+        }
+
+        @keyframes fcm-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         .row-menu-wrap {
