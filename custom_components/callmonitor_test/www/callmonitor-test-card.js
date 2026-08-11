@@ -239,6 +239,24 @@ class CallMonitorTestCard extends HTMLElement {
     }
   }
 
+  async _clearCalls() {
+    if (!this._hass) return;
+
+    try {
+      await this._hass.callService(
+        "callmonitor_test",
+        "clear_calls",
+        {}
+      );
+      this._openMenuCallId = null;
+    } catch (error) {
+      console.error(
+        "FritzCallMonitor: Anrufliste konnte nicht gelöscht werden.",
+        error
+      );
+    }
+  }
+
   async _deleteCall(callId) {
     if (!this._hass || !callId) return;
 
@@ -870,7 +888,6 @@ class CallMonitorTestCard extends HTMLElement {
         message.caller || "unterdrückte Rufnummer";
       const callerName =
         message.caller_name ||
-        message.name ||
         "";
       const caller =
         callerName ||

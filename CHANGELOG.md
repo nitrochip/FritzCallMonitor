@@ -2,6 +2,12 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.7] - 2026-08-11
+
+### Fixed
+- Restored the missing frontend `_clearCalls()` method.
+- Removed stale FRITZ!Box voicemail `message.name` fallback from contact display.
+
 ## [0.4.6] - 2026-08-11
 
 ### Fixed
