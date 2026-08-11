@@ -522,6 +522,16 @@ class CallMonitorTestSensor(SensorEntity):
             )
 
         self._sync_calls_attribute()
+
+        # Keep already loaded voicemail rows in sync immediately after
+        # adding a new phonebook contact.
+        for message in self._answering_machine.message_objects:
+            contact = self._phonebook.lookup(message.caller)
+            new_name = contact.name if contact is not None else None
+            if message.caller_name != new_name:
+                message.caller_name = new_name
+
+        self._write_voicemail_state()
         self.async_write_ha_state()
 
     async def async_delete_call(self, call_id: str) -> bool:

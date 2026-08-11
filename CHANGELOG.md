@@ -2,6 +2,12 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.8] - 2026-08-11
+
+### Fixed
+- Reconcile loaded voicemail caller names immediately after adding a phonebook contact.
+- Voicemail rows now update to the new contact name without waiting for a separate answering-machine sync.
+
 ## [0.4.7] - 2026-08-11
 
 ### Fixed

@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.7**
+> Entwicklungsstand: **v0.4.8**
 
 ## Funktionen
 
@@ -478,3 +478,12 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   als Kontaktname verwendet.
 - Für Voicemails gilt ausschließlich der aktuell synchronisierte
   `caller_name`; ohne Telefonbuchtreffer wird die Rufnummer angezeigt.
+
+
+## v0.4.8
+
+- Nach `Kontakt hinzufügen` werden nun nicht nur gespeicherte Anrufe,
+  sondern auch bereits geladene AB-Nachrichten sofort gegen das frisch
+  synchronisierte FRITZ!Box-Telefonbuch abgeglichen.
+- Dadurch wechselt eine unbekannte Voicemail direkt von Telefonnummer +
+  Kontakt-Button auf den neuen Kontaktnamen.
