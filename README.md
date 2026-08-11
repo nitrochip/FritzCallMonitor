@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.5.1**
+> Entwicklungsstand: **v0.5.2**
 
 ## Funktionen
 
@@ -520,3 +520,13 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   `requestAnimationFrame`-Zyklen, damit der Browser die Änderung sichtbar
   rendern kann.
 - Schlägt die Löschung fehl, wird die Nachricht wieder eingeblendet.
+
+
+## v0.5.2
+
+- Beim Löschen einer echten AB-Sprachnachricht wird jetzt auch der zugehörige
+  lokale Call-Monitor-Rohdatensatz `answering_machine` entfernt.
+- Dadurch erscheint nach dem Löschen der Aufnahme nicht plötzlich derselbe
+  Anruf als neuer `Verpasster Anruf`.
+- Die Karte blendet den passenden Rohdatensatz bereits optimistisch zusammen
+  mit der Voicemail aus, bevor die FRITZ!Box-Löschung abgeschlossen ist.

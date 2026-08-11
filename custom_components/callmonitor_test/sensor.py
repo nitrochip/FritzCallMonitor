@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
-from .phonebook import FritzPhonebookManager
+from .phonebook import FritzPhonebookManager, normalize_phone_number
 from .answering_machine import FritzAnsweringMachineManager
 from .const import (
     CONF_ANSWERING_MACHINE_EXTENSION,
@@ -534,11 +534,102 @@ class CallMonitorTestSensor(SensorEntity):
         self._write_voicemail_state()
         self.async_write_ha_state()
 
+    def _find_matching_answering_machine_call(
+        self,
+        message,
+    ) -> StoredCall | None:
+        """Find the raw AB call that belongs to one voicemail message."""
+        message_number = normalize_phone_number(
+            message.caller,
+            self._country_code,
+        )
+
+        message_time = None
+        for fmt in (
+            "%d.%m.%y %H:%M:%S",
+            "%d.%m.%Y %H:%M:%S",
+            "%d.%m.%y %H:%M",
+            "%d.%m.%Y %H:%M",
+        ):
+            try:
+                message_time = datetime.strptime(
+                    str(message.date).strip(),
+                    fmt,
+                ).astimezone()
+                break
+            except ValueError:
+                continue
+
+        candidates: list[tuple[float, StoredCall]] = []
+
+        for call in self._calls:
+            if call.status != "answering_machine":
+                continue
+
+            call_number = normalize_phone_number(
+                call.caller,
+                self._country_code,
+            )
+            if (
+                message_number and
+                call_number and
+                message_number != call_number
+            ):
+                continue
+
+            if message_time is None:
+                continue
+
+            try:
+                call_time = datetime.fromisoformat(call.timestamp)
+            except ValueError:
+                continue
+
+            if call_time.tzinfo is None:
+                call_time = call_time.astimezone()
+
+            difference = abs(
+                (call_time - message_time).total_seconds()
+            )
+
+            # Same tolerance as the frontend pairing logic.
+            if difference <= 10 * 60:
+                candidates.append((difference, call))
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda item: item[0])
+        return candidates[0][1]
+
     async def async_delete_voicemail(self, message_id: str) -> bool:
-        """Delete one voicemail recording from the FRITZ!Box."""
-        deleted = await self._answering_machine.async_delete_message(message_id)
+        """Delete one voicemail and its matching local raw AB call."""
+        target_message = self._answering_machine.get_message(message_id)
+        if target_message is None:
+            return False
+
+        matching_call = self._find_matching_answering_machine_call(
+            target_message
+        )
+
+        deleted = await self._answering_machine.async_delete_message(
+            message_id
+        )
         if not deleted:
             return False
+
+        # A call with a real voicemail must not turn into a "missed" call
+        # just because the recording was deleted afterwards.
+        if matching_call is not None:
+            self._calls = [
+                call
+                for call in self._calls
+                if call.call_id != matching_call.call_id
+            ]
+            self._sync_calls_attribute()
+            await self._store.async_save(
+                {"calls": [item.as_dict() for item in self._calls]}
+            )
 
         # Re-apply current phonebook names to the freshly loaded voicemail list.
         for message in self._answering_machine.message_objects:

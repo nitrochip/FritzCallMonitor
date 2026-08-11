@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.2] - 2026-08-11
+
+### Fixed
+- Deleting a voicemail no longer reveals its hidden answering-machine call as a missed call.
+- Remove the matching local `answering_machine` call when its voicemail recording is deleted.
+- Optimistically hide the matching raw call together with the voicemail row.
+
 ## [0.5.1] - 2026-08-11
 
 ### Fixed

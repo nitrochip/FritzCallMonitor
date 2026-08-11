@@ -4,6 +4,7 @@ class CallMonitorTestCard extends HTMLElement {
     this._activeFilter = "all";
     this._boundClickHandler = this._handleClick.bind(this);
     this._optimisticallyDeletedVoicemailIds = new Set();
+    this._optimisticallyDeletedCallIds = new Set();
     this._clearAllInProgress = false;
     this._voicemailDeleteError = "";
   }
@@ -307,6 +308,75 @@ class CallMonitorTestCard extends HTMLElement {
     this._voicemailDeleteError = "";
     this._optimisticallyDeletedVoicemailIds.add(messageId);
 
+    const voicemailState =
+      this._hass.states[
+        this.config.voicemail_entity ||
+        "sensor.fritzcallmonitor_anrufbeantworter"
+      ];
+    const message = (
+      Array.isArray(voicemailState?.attributes?.nachrichten)
+        ? voicemailState.attributes.nachrichten
+        : []
+    ).find((item) => item.message_id === messageId);
+
+    const callState = this._hass.states[this.config.entity];
+    const calls = Array.isArray(callState?.attributes?.calls)
+      ? callState.attributes.calls
+      : [];
+
+    if (message) {
+      const normalizeNumber = (value) =>
+        String(value || "").replace(/[^0-9+]/g, "");
+      const messageNumber = normalizeNumber(message.caller);
+      const dateMatch = String(message.date || "").match(
+        /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/
+      );
+
+      let messageTime = 0;
+      if (dateMatch) {
+        let year = Number(dateMatch[3]);
+        if (year < 100) year += 2000;
+        messageTime = new Date(
+          year,
+          Number(dateMatch[2]) - 1,
+          Number(dateMatch[1]),
+          Number(dateMatch[4]),
+          Number(dateMatch[5]),
+          Number(dateMatch[6] || 0)
+        ).getTime();
+      }
+
+      const matchingCall = calls
+        .filter((call) => {
+          if (call.status !== "answering_machine") return false;
+
+          const callNumber = normalizeNumber(call.caller);
+          if (
+            messageNumber &&
+            callNumber &&
+            messageNumber !== callNumber
+          ) {
+            return false;
+          }
+
+          const callTime = new Date(call.timestamp).getTime();
+          return (
+            messageTime &&
+            Number.isFinite(callTime) &&
+            Math.abs(callTime - messageTime) <= 10 * 60 * 1000
+          );
+        })
+        .sort(
+          (a, b) =>
+            Math.abs(new Date(a.timestamp).getTime() - messageTime) -
+            Math.abs(new Date(b.timestamp).getTime() - messageTime)
+        )[0];
+
+      if (matchingCall?.call_id) {
+        this._optimisticallyDeletedCallIds.add(matchingCall.call_id);
+      }
+    }
+
     if (
       this._voicemailPlayingId &&
       this._voicemailAudio &&
@@ -346,6 +416,7 @@ class CallMonitorTestCard extends HTMLElement {
       // Keep the ID hidden until HA confirms that the message is really gone.
     } catch (error) {
       this._optimisticallyDeletedVoicemailIds.delete(messageId);
+      this._optimisticallyDeletedCallIds.clear();
       this._voicemailDeleteError =
         "AB-Nachricht konnte nicht gelöscht werden.";
       this._render();
@@ -679,7 +750,13 @@ class CallMonitorTestCard extends HTMLElement {
 
     const visibleCalls = this._clearAllInProgress
       ? []
-      : this._filterCalls(calls, voicemails).slice(0, maxCalls);
+      : this._filterCalls(
+          calls.filter(
+            (call) =>
+              !this._optimisticallyDeletedCallIds.has(call.call_id)
+          ),
+          voicemails
+        ).slice(0, maxCalls);
 
     const rows = visibleCalls
       .map((call) => {
