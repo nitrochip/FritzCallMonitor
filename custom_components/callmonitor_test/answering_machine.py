@@ -103,6 +103,24 @@ class FritzAnsweringMachineManager:
         self._machines = machines
         self._last_sync = datetime.now().astimezone()
 
+    async def async_delete_all_messages(self) -> int:
+        """Delete all currently known voicemail messages from the FRITZ!Box."""
+        messages = self.message_objects
+        if not messages:
+            return 0
+
+        deleted = 0
+        for message in messages:
+            await self._hass.async_add_executor_job(
+                self._delete_message_blocking,
+                message.tam_index,
+                message.index,
+            )
+            deleted += 1
+
+        await self.async_sync()
+        return deleted
+
     async def async_delete_message(self, message_id: str) -> bool:
         """Delete one voicemail message on the FRITZ!Box and refresh the list."""
         message = self.get_message(str(message_id or "").strip())

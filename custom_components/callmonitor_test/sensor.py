@@ -577,11 +577,20 @@ class CallMonitorTestSensor(SensorEntity):
         return True
 
     async def async_clear_calls(self) -> None:
-        """Clear the incoming-call history and persist the empty list."""
+        """Clear call history and all FRITZ!Box voicemail recordings."""
+        # Clear local call history immediately.
         self._calls = []
         self._sync_calls_attribute()
         await self._store.async_save({"calls": []})
         self.async_write_ha_state()
+
+        # Then clear real voicemail recordings on the FRITZ!Box.
+        if self._answering_machine.enabled:
+            await self._answering_machine.async_delete_all_messages()
+            if self._voicemail_sensor is not None:
+                self._voicemail_sensor.clear_error()
+            self._write_voicemail_state()
+            self.async_write_ha_state()
 
     async def _add_completed_call(self, call: StoredCall) -> None:
         self._calls.insert(0, call)

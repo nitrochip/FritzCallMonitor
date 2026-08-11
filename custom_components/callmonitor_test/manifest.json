@@ -1,7 +1,7 @@
 {
   "domain": "callmonitor_test",
   "name": "FritzCallMonitor",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "documentation": "https://github.com/nitrochip/FritzCallMonitor",
   "issue_tracker": "https://github.com/nitrochip/FritzCallMonitor/issues",
   "codeowners": [

@@ -2,6 +2,15 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.0] - 2026-08-11
+
+### Added
+- Optimistic UI deletion for individual voicemail messages.
+- Immediate visual feedback while FRITZ!Box deletion completes.
+- Failed voicemail deletions restore the row and show an error.
+- `Clear all` now also removes all voicemail recordings from the FRITZ!Box.
+- Optimistic visual clearing for `Clear all`.
+
 ## [0.4.9] - 2026-08-11
 
 ### Added

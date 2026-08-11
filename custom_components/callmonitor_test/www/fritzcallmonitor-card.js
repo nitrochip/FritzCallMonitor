@@ -3,6 +3,9 @@ class CallMonitorTestCard extends HTMLElement {
     super();
     this._activeFilter = "all";
     this._boundClickHandler = this._handleClick.bind(this);
+    this._optimisticallyDeletedVoicemailIds = new Set();
+    this._clearAllInProgress = false;
+    this._voicemailDeleteError = "";
   }
 
   connectedCallback() {
@@ -267,16 +270,30 @@ class CallMonitorTestCard extends HTMLElement {
   async _clearCalls() {
     if (!this._hass) return;
 
+    this._openMenuCallId = null;
+    this._openVoicemailMenuId = null;
+    this._voicemailDeleteError = "";
+    this._clearAllInProgress = true;
+
+    // Immediate visual feedback while local calls and FRITZ!Box voicemail
+    // messages are removed in the background.
+    this._render();
+
     try {
       await this._hass.callService(
         "callmonitor_test",
         "clear_calls",
         {}
       );
-      this._openMenuCallId = null;
+      this._clearAllInProgress = false;
+      this._render();
     } catch (error) {
+      this._clearAllInProgress = false;
+      this._voicemailDeleteError =
+        "Anrufliste und AB-Nachrichten konnten nicht vollständig gelöscht werden.";
+      this._render();
       console.error(
-        "FritzCallMonitor: Anrufliste konnte nicht gelöscht werden.",
+        "FritzCallMonitor: Clear all fehlgeschlagen.",
         error
       );
     }
@@ -285,29 +302,39 @@ class CallMonitorTestCard extends HTMLElement {
   async _deleteVoicemail(messageId) {
     if (!this._hass || !messageId) return;
 
-    try {
-      if (
-        this._voicemailPlayingId &&
-        this._voicemailAudio &&
-        this._voicemailPlayingId ===
-          `media-source://callmonitor_test/${messageId}`
-      ) {
-        this._voicemailAudio.pause();
-        this._voicemailAudio.removeAttribute("src");
-        this._voicemailAudio.load();
-        this._voicemailAudio = null;
-        this._voicemailPlayingId = "";
-        this._voicemailIsPlaying = false;
-      }
+    this._openVoicemailMenuId = null;
+    this._voicemailDeleteError = "";
+    this._optimisticallyDeletedVoicemailIds.add(messageId);
 
+    if (
+      this._voicemailPlayingId &&
+      this._voicemailAudio &&
+      this._voicemailPlayingId ===
+        `media-source://callmonitor_test/${messageId}`
+    ) {
+      this._voicemailAudio.pause();
+      this._voicemailAudio.removeAttribute("src");
+      this._voicemailAudio.load();
+      this._voicemailAudio = null;
+      this._voicemailPlayingId = "";
+      this._voicemailIsPlaying = false;
+    }
+
+    // Immediate visual feedback: remove row before the FRITZ!Box request ends.
+    this._render();
+
+    try {
       await this._hass.callService(
         "callmonitor_test",
         "delete_voicemail",
         { message_id: messageId }
       );
-
-      this._openVoicemailMenuId = null;
+      // Keep the ID hidden until the next HA state update confirms deletion.
     } catch (error) {
+      this._optimisticallyDeletedVoicemailIds.delete(messageId);
+      this._voicemailDeleteError =
+        "AB-Nachricht konnte nicht gelöscht werden.";
+      this._render();
       console.error(
         "FritzCallMonitor: AB-Nachricht konnte nicht gelöscht werden.",
         error
@@ -589,9 +616,28 @@ class CallMonitorTestCard extends HTMLElement {
       this.config.voicemail_entity ||
       "sensor.fritzcallmonitor_anrufbeantworter";
     const voicemailState = this._hass.states[voicemailEntity];
-    const voicemails = Array.isArray(voicemailState?.attributes?.nachrichten)
+    const rawVoicemails = Array.isArray(voicemailState?.attributes?.nachrichten)
       ? voicemailState.attributes.nachrichten
       : [];
+
+    // Keep optimistic deletions hidden until Home Assistant reports that
+    // the message is really gone. If the backend no longer contains an ID,
+    // the temporary marker can be released.
+    const rawVoicemailIds = new Set(
+      rawVoicemails.map((message) => message.message_id)
+    );
+    for (const messageId of this._optimisticallyDeletedVoicemailIds) {
+      if (!rawVoicemailIds.has(messageId)) {
+        this._optimisticallyDeletedVoicemailIds.delete(messageId);
+      }
+    }
+
+    const voicemails = this._clearAllInProgress
+      ? []
+      : rawVoicemails.filter(
+          (message) =>
+            !this._optimisticallyDeletedVoicemailIds.has(message.message_id)
+        );
 
     const parseVoicemailDate = (value) => {
       const match = String(value || "").match(
@@ -617,8 +663,9 @@ class CallMonitorTestCard extends HTMLElement {
       return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
     };
 
-    const visibleCalls = this._filterCalls(calls, voicemails)
-      .slice(0, maxCalls);
+    const visibleCalls = this._clearAllInProgress
+      ? []
+      : this._filterCalls(calls, voicemails).slice(0, maxCalls);
 
     const rows = visibleCalls
       .map((call) => {
@@ -1164,8 +1211,10 @@ class CallMonitorTestCard extends HTMLElement {
         : "";
 
     const voicemailError =
-      this._voicemailPlayError
-        ? `<div class="empty voicemail-error">${this._escape(this._voicemailPlayError)}</div>`
+      this._voicemailPlayError || this._voicemailDeleteError
+        ? `<div class="empty voicemail-error">${this._escape(
+            this._voicemailPlayError || this._voicemailDeleteError
+          )}</div>`
         : "";
 
     const phonebookOptions = phonebooks
