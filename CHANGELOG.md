@@ -2,6 +2,19 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.4] - 2026-08-11
+
+### Fixed
+- TCP-Listener als `ConfigEntry`-Background-Task gestartet.
+- FritzCallMonitor blockiert dadurch nicht mehr die Home-Assistant-Startup-Phase.
+
+## [0.3.3] - 2026-08-11
+
+### Fixed
+- Neue eindeutige Dashboard-Ressource `fritzcallmonitor-card.js`, um veraltete
+  Frontend-/Browser-Caches zuverlässig zu umgehen.
+- Drei-Punkte-Menü aus v0.3.2 ist in der neuen Ressource enthalten.
+
 ## [0.3.2] - 2026-08-10
 
 ### Added

@@ -77,6 +77,7 @@ class CallMonitorTestSensor(SensorEntity):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
+        self._entry = entry
         self._host = entry.data[CONF_HOST]
         self._port = entry.data[CONF_PORT]
         self._answering_machine_extension = entry.data[CONF_ANSWERING_MACHINE_EXTENSION]
@@ -190,7 +191,8 @@ class CallMonitorTestSensor(SensorEntity):
         return self._attributes
 
     async def async_added_to_hass(self) -> None:
-        self._task = self.hass.async_create_task(
+        self._task = self._entry.async_create_background_task(
+            self.hass,
             self._monitor(),
             "FritzCallMonitor TCP listener",
         )

@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.2**
+> Entwicklungsstand: **v0.3.4**
 
 ## Funktionen
 
@@ -66,7 +66,7 @@ Unter **Einstellungen → Dashboards → Ressourcen** folgende Ressource als
 **JavaScript-Modul** hinzufügen:
 
 ```text
-/local_callmonitor_test/callmonitor-test-card.js
+/local_callmonitor_test/fritzcallmonitor-card.js
 ```
 
 Nach Updates der Karte den Browser gegebenenfalls mit `Strg + F5` neu laden.
@@ -319,3 +319,31 @@ neu abgeglichen:
 - neue Kontakte werden ergänzt
 - umbenannte Kontakte werden aktualisiert
 - gelöschte Kontakte werden aus alten Anrufeinträgen wieder entfernt
+
+
+## Hinweis zu v0.3.3
+
+Die Dashboard-JavaScript-Datei verwendet jetzt den eindeutigen Ressourcennamen:
+
+```text
+/local_callmonitor_test/fritzcallmonitor-card.js
+```
+
+Damit werden alte Browser-/Frontend-Caches der bisherigen Datei
+`callmonitor-test-card.js` sicher umgangen.
+
+Der Kartentyp bleibt aus Kompatibilitätsgründen:
+
+```yaml
+type: custom:callmonitor-test-card
+```
+
+Die alte JavaScript-Datei bleibt im Paket enthalten, sollte aber nicht mehr
+als Dashboard-Ressource registriert sein.
+
+
+## Hinweis zu v0.3.4
+
+Der dauerhaft laufende TCP-Listener wird jetzt als Home-Assistant-
+`ConfigEntry`-Background-Task gestartet. Dadurch blockiert FritzCallMonitor
+nicht mehr die Abschlussphase des Home-Assistant-Starts.
