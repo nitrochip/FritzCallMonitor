@@ -118,6 +118,26 @@ class CallMonitorTestCard extends HTMLElement {
   async _playVoicemail(mediaSourceId) {
     if (!this._hass || !mediaSourceId) return;
 
+    if (
+      this._voicemailAudio &&
+      this._voicemailPlayingId === mediaSourceId
+    ) {
+      if (this._voicemailAudio.paused) {
+        try {
+          await this._voicemailAudio.play();
+          this._voicemailIsPlaying = true;
+        } catch (error) {
+          this._voicemailPlayError =
+            error?.message || String(error) || "Wiedergabe fehlgeschlagen.";
+        }
+      } else {
+        this._voicemailAudio.pause();
+        this._voicemailIsPlaying = false;
+      }
+      this._render();
+      return;
+    }
+
     this._voicemailPlayError = "";
     this._voicemailLoading = mediaSourceId;
     this._render();
@@ -144,7 +164,8 @@ class CallMonitorTestCard extends HTMLElement {
 
       if (this._voicemailAudio) {
         this._voicemailAudio.pause();
-        this._voicemailAudio.src = "";
+        this._voicemailAudio.removeAttribute("src");
+        this._voicemailAudio.load();
         this._voicemailAudio = null;
       }
 
@@ -155,24 +176,49 @@ class CallMonitorTestCard extends HTMLElement {
       audio.type = resolvedMedia.mime_type || "audio/wav";
 
       audio.onerror = () => {
+        // Ignore the transient browser error caused by clearing an old source.
+        if (!audio.getAttribute("src")) {
+          return;
+        }
+
         const code = audio.error?.code;
         const message = audio.error?.message || "Unbekannter Audiofehler";
         this._voicemailPlayError =
           `Audio konnte nicht geladen werden (Code ${code || "?"}: ${message}).`;
         this._voicemailLoading = "";
+        this._voicemailIsPlaying = false;
         this._render();
         console.error("FritzCallMonitor audio error:", audio.error, audioUrl);
       };
 
-      audio.oncanplay = () => {
+      audio.onplay = () => {
+        this._voicemailPlayingId = mediaSourceId;
+        this._voicemailIsPlaying = true;
+        this._voicemailLoading = "";
+        this._voicemailPlayError = "";
+        this._render();
+      };
+
+      audio.onpause = () => {
+        if (!audio.ended) {
+          this._voicemailIsPlaying = false;
+          this._render();
+        }
+      };
+
+      audio.onended = () => {
+        this._voicemailIsPlaying = false;
+        this._voicemailPlayingId = "";
         this._voicemailLoading = "";
         this._render();
       };
 
       this._voicemailAudio = audio;
+      this._voicemailPlayingId = mediaSourceId;
       await audio.play();
     } catch (error) {
       this._voicemailLoading = "";
+      this._voicemailIsPlaying = false;
       this._voicemailPlayError =
         error?.message || String(error) || "Wiedergabe fehlgeschlagen.";
       this._render();
@@ -523,11 +569,30 @@ class CallMonitorTestCard extends HTMLElement {
               data-action="play-voicemail"
               data-media-source="${this._escape(message.media_source_id || "")}"
               type="button"
-              title="Nachricht abspielen"
-              aria-label="Nachricht abspielen"
+              title="${
+                this._voicemailPlayingId === message.media_source_id &&
+                this._voicemailIsPlaying
+                  ? "Nachricht pausieren"
+                  : "Nachricht abspielen"
+              }"
+              aria-label="${
+                this._voicemailPlayingId === message.media_source_id &&
+                this._voicemailIsPlaying
+                  ? "Nachricht pausieren"
+                  : "Nachricht abspielen"
+              }"
               ${loading ? "disabled" : ""}
             >
-              <ha-icon icon="${loading ? "mdi:loading" : "mdi:play-circle-outline"}"></ha-icon>
+              <ha-icon icon="${
+                loading
+                  ? "mdi:loading"
+                  : (
+                      this._voicemailPlayingId === message.media_source_id &&
+                      this._voicemailIsPlaying
+                        ? "mdi:pause-circle-outline"
+                        : "mdi:play-circle-outline"
+                    )
+              }"></ha-icon>
             </button>
           </div>
         `;

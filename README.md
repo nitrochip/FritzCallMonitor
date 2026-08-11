@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.2**
+> Entwicklungsstand: **v0.4.3**
 
 ## Funktionen
 
@@ -423,3 +423,12 @@ Behebt einen Fehler bei der Auswahl des FritzCallMonitor-Sensors in der
 Media-Source. Interne Werte wie der boolesche Marker für die registrierte
 Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
 `answering_machine` verwendet.
+
+
+## v0.4.3 – Play/Pause
+
+- Der falsche `MEDIA_ELEMENT_ERROR: Empty src attribute` wird unterdrückt.
+- Der Playbutton wechselt während der Wiedergabe auf Pause.
+- Erneuter Klick pausiert die aktuelle Nachricht.
+- Klick auf Pause/Play setzt dieselbe Nachricht fort.
+- Nach Ende der Nachricht wechselt der Button automatisch zurück auf Play.

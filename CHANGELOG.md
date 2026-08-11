@@ -2,6 +2,17 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.3] - 2026-08-11
+
+### Fixed
+- Ignore the transient empty-src media error when replacing an audio source.
+- Clear stale playback errors when playback starts successfully.
+
+### Added
+- Play/Pause toggle for the currently active voicemail.
+- Playback button changes to a pause icon while audio is playing.
+- Button returns to play after pause or playback completion.
+
 ## [0.4.2] - 2026-08-11
 
 ### Fixed
