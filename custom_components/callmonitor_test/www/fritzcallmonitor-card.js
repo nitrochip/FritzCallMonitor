@@ -492,6 +492,7 @@ class CallMonitorTestCard extends HTMLElement {
 
       <style>
         ha-card {
+          overflow: visible;
           overflow: hidden;
         }
 
@@ -598,6 +599,7 @@ class CallMonitorTestCard extends HTMLElement {
         }
 
         .card-content {
+          overflow: visible;
           padding: 0 16px 8px;
         }
 
@@ -694,8 +696,8 @@ class CallMonitorTestCard extends HTMLElement {
         .row-menu {
           position: absolute;
           right: 0;
-          top: 38px;
-          z-index: 20;
+          bottom: 38px;
+          z-index: 50;
           min-width: 190px;
           padding: 6px;
           border: 1px solid var(--divider-color);

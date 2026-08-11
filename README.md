@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.3.4**
+> Entwicklungsstand: **v0.3.5**
 
 ## Funktionen
 
@@ -347,3 +347,10 @@ als Dashboard-Ressource registriert sein.
 Der dauerhaft laufende TCP-Listener wird jetzt als Home-Assistant-
 `ConfigEntry`-Background-Task gestartet. Dadurch blockiert FritzCallMonitor
 nicht mehr die Abschlussphase des Home-Assistant-Starts.
+
+
+## Hinweis zu v0.3.5
+
+Das Drei-Punkte-Menü öffnet jetzt nach oben und die Kartencontainer erlauben
+sichtbaren Überlauf. Dadurch wird das Menü am unteren Kartenrand nicht mehr
+abgeschnitten.

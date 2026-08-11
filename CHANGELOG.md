@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.3.5] - 2026-08-11
+
+### Fixed
+- Drei-Punkte-Menü wird am unteren Rand der Dashboard-Karte nicht mehr abgeschnitten.
+- Menü öffnet nach oben und erhält höheren z-index.
+- Kartencontainer erlauben sichtbaren Überlauf für Aktionsmenüs.
+
 ## [0.3.4] - 2026-08-11
 
 ### Fixed
