@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.4.6] - 2026-08-11
+
+### Fixed
+- Determine voicemail duration from the actual WAV recording.
+- Ignore stale FRITZ!Box voicemail `Name` values for contact display.
+- Unknown voicemail callers correctly expose the add-contact action after phonebook sync.
+
 ## [0.4.5] - 2026-08-11
 
 ### Fixed

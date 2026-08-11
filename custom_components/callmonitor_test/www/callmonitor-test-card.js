@@ -729,7 +729,6 @@ class CallMonitorTestCard extends HTMLElement {
           message.caller || "unterdrückte Rufnummer";
         const callerName =
           message.caller_name ||
-          message.name ||
           "";
         const caller =
           callerName ||

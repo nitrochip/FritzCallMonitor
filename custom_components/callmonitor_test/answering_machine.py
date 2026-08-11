@@ -4,10 +4,12 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from hashlib import sha256
+from io import BytesIO
 import logging
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import urlopen
 import xml.etree.ElementTree as ET
+import wave
 
 from fritzconnection import FritzConnection
 
@@ -39,6 +41,7 @@ class AnsweringMachineMessage:
     new: bool
     path: str
     playback_url: str = ""
+    audio_duration_seconds: int | None = None
     caller_name: str | None = None
 
     def as_dict(self) -> dict[str, object]:
@@ -124,6 +127,43 @@ class FritzAnsweringMachineManager:
             raise RuntimeError("Die FRITZ!Box hat eine leere Aufnahme geliefert.")
         return data, content_type
 
+    @staticmethod
+    def _probe_audio_duration(playback_url: str) -> int | None:
+        """Read the actual duration from the voicemail WAV recording."""
+        if not playback_url:
+            return None
+
+        try:
+            with urlopen(playback_url, timeout=20) as response:
+                data = response.read()
+
+            if not data:
+                return None
+
+            with wave.open(BytesIO(data), "rb") as audio:
+                frame_rate = audio.getframerate()
+                frame_count = audio.getnframes()
+
+            if frame_rate <= 0 or frame_count <= 0:
+                return None
+
+            return max(1, round(frame_count / frame_rate))
+        except Exception as error:
+            LOGGER.debug(
+                "AB-Audiodauer konnte nicht bestimmt werden: %s",
+                error,
+            )
+            return None
+
+    def _enrich_audio_durations(
+        self,
+        messages: list[AnsweringMachineMessage],
+    ) -> None:
+        for message in messages:
+            message.audio_duration_seconds = self._probe_audio_duration(
+                message.playback_url or message.path
+            )
+
     def _sync_blocking(
         self,
     ) -> tuple[list[AnsweringMachineMessage], list[AnsweringMachineInfo]]:
@@ -191,6 +231,8 @@ class FritzAnsweringMachineManager:
                 "X_AVM-DE_TAM ist nicht verfügbar oder der FRITZ!Box-Benutzer "
                 "besitzt keine ausreichende Berechtigung."
             )
+
+        self._enrich_audio_durations(messages)
 
         messages.sort(
             key=lambda item: self._date_sort_key(item.date),

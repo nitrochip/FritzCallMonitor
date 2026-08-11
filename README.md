@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.4.5**
+> Entwicklungsstand: **v0.4.6**
 
 ## Funktionen
 
@@ -458,3 +458,13 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
 - `Neu` wurde entfernt.
 - Telefonbuch-Synchronisierung gleicht jetzt auch Voicemail-Namen vollständig
   ab; gelöschte Kontakte verlieren ihren alten Namen.
+
+
+## v0.4.6
+
+- Die Dauer einer AB-Nachricht wird aus der tatsächlichen WAV-Aufnahme ermittelt.
+- XML-Dauerwerte der FRITZ!Box werden nur noch als Fallback verwendet.
+- Für die Anzeige von Voicemail-Kontakten wird ausschließlich der aktuell
+  synchronisierte Telefonbuchname verwendet.
+- Der möglicherweise veraltete `Name` aus der AB-Nachrichtenliste wird nicht
+  mehr für die Anzeige oder für `Kontakt hinzufügen` berücksichtigt.

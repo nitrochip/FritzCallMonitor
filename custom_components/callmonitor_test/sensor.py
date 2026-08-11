@@ -598,7 +598,11 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
         for item in manager.message_objects:
             data = item.as_dict()
             data["media_source_id"] = f"media-source://{DOMAIN}/{item.message_id}"
-            data["duration_seconds"] = _fcm_voicemail_duration_seconds(item.duration)
+            data["duration_seconds"] = (
+                item.audio_duration_seconds
+                if item.audio_duration_seconds is not None
+                else _fcm_voicemail_duration_seconds(item.duration)
+            )
             data.pop("path", None)
             data.pop("playback_url", None)
             data.pop("playback_url", None)
