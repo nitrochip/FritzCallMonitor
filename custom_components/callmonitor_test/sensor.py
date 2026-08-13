@@ -735,7 +735,6 @@ class FritzCallMonitorVoicemailSensor(SensorEntity):
             )
             data.pop("path", None)
             data.pop("playback_url", None)
-            data.pop("playback_url", None)
             messages.append(data)
 
         attrs: dict[str, Any] = {

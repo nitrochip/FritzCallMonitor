@@ -2,6 +2,16 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.3] - 2026-08-12
+
+### Cleanup
+- Consolidated duplicate call and voicemail rendering code.
+- Removed dead voicemail player markup/CSS and unused temporary fields.
+- Removed redundant cleanup and unused import.
+- Removed stale voicemail `message.name` fallback from Media Source.
+- Clean up optimistic call deletion IDs after backend confirmation.
+- No intentional feature changes.
+
 ## [0.5.2] - 2026-08-11
 
 ### Fixed

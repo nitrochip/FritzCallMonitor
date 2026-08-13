@@ -1,8 +1,6 @@
 """Home Assistant media source for FritzCallMonitor voicemail recordings."""
 from __future__ import annotations
 
-from pathlib import PurePosixPath
-
 from homeassistant.components.media_player import BrowseError, MediaClass
 from homeassistant.components.media_source import (
     BrowseMediaSource,
@@ -75,7 +73,6 @@ class FritzCallMonitorMediaSource(MediaSource):
                 media_content_type="audio/wav",
                 title=(
                     message.caller_name
-                    or message.name
                     or message.caller
                     or "AB-Nachricht"
                 ),
@@ -91,7 +88,6 @@ class FritzCallMonitorMediaSource(MediaSource):
                 media_content_type="audio/wav",
                 title=(
                     message.caller_name
-                    or message.name
                     or message.caller
                     or f"AB-Nachricht {message.index}"
                 ),

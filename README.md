@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.5.2**
+> Entwicklungsstand: **v0.5.3**
 
 ## Funktionen
 
@@ -530,3 +530,16 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
   Anruf als neuer `Verpasster Anruf`.
 - Die Karte blendet den passenden Rohdatensatz bereits optimistisch zusammen
   mit der Voicemail aus, bevor die FRITZ!Box-Löschung abgeschlossen ist.
+
+
+## v0.5.3 – Code-Cleanup
+
+- Keine neue Funktionalität; Basis ist die verifizierte v0.5.2.
+- Doppelte Call-/Voicemail-Renderlogik der Karte in gemeinsame Hilfsfunktionen zusammengeführt.
+- Toten deaktivierten Audio-Player-Code und zugehöriges CSS entfernt.
+- Nicht verwendetes `_original_status` entfernt.
+- Optimistische Call-ID-Marker werden nach bestätigter Löschung wieder bereinigt.
+- Doppeltes `playback_url`-Cleanup entfernt.
+- Unbenutzten Python-Import entfernt.
+- Veralteten FRITZ!Box-`message.name`-Fallback auch aus Media Source entfernt.
+- Legacy-Kartendatei bleibt aus Kompatibilitätsgründen erhalten und ist bytegleich zur aktuellen Kartendatei.
