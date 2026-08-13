@@ -2,6 +2,18 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.4] - 2026-08-13
+
+### Added
+- Reliable new-voicemail detection using persistent message IDs.
+- Fire `callmonitor_test_event` with `type: new_voicemail` for each newly discovered recording.
+- Preserve known voicemail IDs across Home Assistant restarts.
+- Updated notification automation example to use the integration event.
+
+### Behavior
+- Existing voicemail messages on the first successful v0.5.4 sync form the baseline and do not notify.
+- Deleting messages does not create false new-voicemail events.
+
 ## [0.5.3] - 2026-08-12
 
 ### Cleanup

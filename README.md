@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.5.3**
+> Entwicklungsstand: **v0.5.4**
 
 ## Funktionen
 
@@ -209,8 +209,9 @@ interne `call_id`.
 callmonitor_test.clear_calls
 ```
 
-auf. Dabei wird ausschließlich die gespeicherte Anrufhistorie geleert.
-Dashboard, Karte, Integration und Konfiguration bleiben erhalten.
+auf. Dabei werden die lokal gespeicherte Anrufhistorie und die vorhandenen
+AB-Sprachnachrichten auf der FRITZ!Box gelöscht. Dashboard, Karte, Integration
+und Konfiguration bleiben erhalten.
 
 ## Projektstruktur
 
@@ -233,10 +234,20 @@ custom_components/
 
 ## Benachrichtigungs-Automation
 
-Beispiel für eine gemeinsame Automation. Die Benachrichtigung bei verpassten
-Anrufen funktioniert bereits. Der Trigger `Neue AB-Nachricht` ist für die
-geplante AB-Nachrichtenfunktion vorbereitet und funktioniert erst, sobald diese
-Funktion in FritzCallMonitor umgesetzt ist.
+Seit v0.5.4 erzeugt FritzCallMonitor für eine tatsächlich neu erkannte
+AB-Sprachnachricht das Home-Assistant-Ereignis:
+
+```text
+callmonitor_test_event
+```
+
+mit `type: new_voicemail`.
+
+Beim ersten erfolgreichen AB-Sync werden bereits vorhandene Nachrichten nur als
+Ausgangsbestand gespeichert. Sie lösen keine Benachrichtigung aus. Die bekannten
+Nachrichten-IDs werden persistent gespeichert, sodass nach einem Home-Assistant-
+Neustart auch Nachrichten erkannt werden können, die während der Offline-Zeit
+neu hinzugekommen sind.
 
 ```yaml
 alias: FritzCallMonitor - Benachrichtigungen
@@ -247,9 +258,10 @@ triggers:
     to: "Verpasster Anruf"
     id: missed
 
-  - trigger: state
-    entity_id: sensor.fritzcallmonitor_anrufstatus
-    to: "Neue AB-Nachricht"
+  - trigger: event
+    event_type: callmonitor_test_event
+    event_data:
+      type: new_voicemail
     id: answering_machine
 
 conditions: []
@@ -281,14 +293,14 @@ actions:
               title: "📨 Neue AB-Nachricht"
               message: >
                 Neue Nachricht von
-                {{ state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer_name')
-                   or state_attr('sensor.fritzcallmonitor_anrufstatus', 'anrufer') }}.
+                {{ trigger.event.data.caller_name
+                   or trigger.event.data.caller }}.
 
 mode: queued
 ```
 
-`notify.mobile_app_handy_chris` muss an die eigene Mobile-App-Notify-Entität
-angepasst werden.
+`notify.mobile_app_handy_chris` muss bei Bedarf an die gewünschte
+Mobile-App-Notify-Entität angepasst werden.
 
 
 ## Roadmap
@@ -543,3 +555,13 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
 - Unbenutzten Python-Import entfernt.
 - Veralteten FRITZ!Box-`message.name`-Fallback auch aus Media Source entfernt.
 - Legacy-Kartendatei bleibt aus Kompatibilitätsgründen erhalten und ist bytegleich zur aktuellen Kartendatei.
+
+
+## v0.5.4
+
+- Zuverlässige Erkennung neu hinzugekommener AB-Sprachnachrichten.
+- Neues Ereignis `callmonitor_test_event` mit `type: new_voicemail`.
+- Bereits vorhandene Nachrichten lösen beim ersten Sync keine Meldung aus.
+- Bekannte Nachrichten-IDs werden persistent gespeichert.
+- Löschen oder normale Synchronisationen erzeugen keine
+  `new_voicemail`-Benachrichtigung.

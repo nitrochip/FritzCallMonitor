@@ -29,6 +29,10 @@ from .const import (
     ANSWERING_MACHINE_SYNC_MINUTES,
     STORAGE_KEY,
     STORAGE_VERSION,
+    EVENT_FRITZCALLMONITOR,
+    EVENT_TYPE_NEW_VOICEMAIL,
+    VOICEMAIL_KNOWN_STORAGE_KEY,
+    VOICEMAIL_KNOWN_STORAGE_VERSION,
 )
 LOGGER = logging.getLogger(__name__)
 
@@ -120,10 +124,28 @@ class CallMonitorTestSensor(SensorEntity):
         self._writer: asyncio.StreamWriter | None = None
         self._phonebook_unsub = None
         self._answering_machine_unsub = None
-        self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        self._store: Store[dict[str, Any]] = Store(
+            hass,
+            STORAGE_VERSION,
+            STORAGE_KEY,
+        )
+        self._known_voicemail_ids: set[str] | None = None
+        self._voicemail_known_store: Store[dict[str, Any]] = Store(
+            hass,
+            VOICEMAIL_KNOWN_STORAGE_VERSION,
+            VOICEMAIL_KNOWN_STORAGE_KEY,
+        )
 
     async def async_initialize(self) -> None:
         stored = await self._store.async_load() or {}
+
+        known_voicemail_data = await self._voicemail_known_store.async_load() or {}
+        if known_voicemail_data.get("initialized"):
+            self._known_voicemail_ids = {
+                str(message_id)
+                for message_id in known_voicemail_data.get("message_ids", [])
+                if message_id
+            }
         migrated_ids = False
         loaded_calls: list[StoredCall] = []
 
@@ -411,19 +433,86 @@ class CallMonitorTestSensor(SensorEntity):
 
         self.async_write_ha_state()
 
+    async def _async_detect_new_voicemails(self) -> list:
+        """Return newly discovered voicemail messages and persist their IDs."""
+        messages = self._answering_machine.message_objects
+        current_ids = {
+            message.message_id
+            for message in messages
+            if message.message_id
+        }
+
+        # First successful sync on a fresh installation is only a baseline.
+        if self._known_voicemail_ids is None:
+            self._known_voicemail_ids = set(current_ids)
+            await self._voicemail_known_store.async_save(
+                {
+                    "initialized": True,
+                    "message_ids": sorted(self._known_voicemail_ids),
+                }
+            )
+            return []
+
+        new_messages = [
+            message
+            for message in messages
+            if (
+                message.message_id and
+                message.message_id not in self._known_voicemail_ids
+            )
+        ]
+
+        if current_ids - self._known_voicemail_ids:
+            self._known_voicemail_ids.update(current_ids)
+            await self._voicemail_known_store.async_save(
+                {
+                    "initialized": True,
+                    "message_ids": sorted(self._known_voicemail_ids),
+                }
+            )
+
+        return new_messages
+
+    def _fire_new_voicemail_event(self, message) -> None:
+        """Fire one Home Assistant event for a newly discovered voicemail."""
+        duration_seconds = (
+            message.audio_duration_seconds
+            if message.audio_duration_seconds is not None
+            else _fcm_voicemail_duration_seconds(message.duration)
+        )
+
+        self.hass.bus.async_fire(
+            EVENT_FRITZCALLMONITOR,
+            {
+                "type": EVENT_TYPE_NEW_VOICEMAIL,
+                "message_id": message.message_id,
+                "caller": message.caller or "unterdrückte Rufnummer",
+                "caller_name": message.caller_name,
+                "called": message.called,
+                "date": message.date,
+                "duration_seconds": duration_seconds,
+                "tam_index": message.tam_index,
+            },
+        )
+
     async def async_sync_answering_machine(self) -> None:
-        """Synchronize voicemail metadata from the FRITZ!Box."""
+        """Synchronize voicemail metadata and detect newly added messages."""
         if not self._answering_machine.enabled:
             self._write_voicemail_state()
             return
 
+        new_messages = []
+
         try:
             await self._answering_machine.async_sync()
+
             for message in self._answering_machine.message_objects:
                 contact = self._phonebook.lookup(message.caller)
                 message.caller_name = (
                     contact.name if contact is not None else None
                 )
+
+            new_messages = await self._async_detect_new_voicemails()
         except Exception as error:
             LOGGER.warning(
                 "Anrufbeantworter konnte nicht synchronisiert werden: %s",
@@ -436,6 +525,10 @@ class CallMonitorTestSensor(SensorEntity):
                 self._voicemail_sensor.clear_error()
 
         self._write_voicemail_state()
+
+        # Fire only after the sensor state contains the newly synchronized data.
+        for message in new_messages:
+            self._fire_new_voicemail_event(message)
 
     async def async_sync_phonebook(self) -> None:
         """Manually synchronize the FRITZ!Box phonebooks."""
