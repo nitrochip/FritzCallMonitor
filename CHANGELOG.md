@@ -2,6 +2,17 @@
 
 Alle wesentlichen Änderungen an FritzCallMonitor werden hier dokumentiert.
 
+## [0.5.5] - 2026-08-13
+
+### Added
+- Classify answering-machine calls without a recording as missed calls after two delayed voicemail refreshes.
+- Expose `keine_ab_nachricht: true` for this special missed-call case.
+
+### Behavior
+- Refresh voicemail metadata after 3 seconds and again after 7 seconds total.
+- A matching voicemail prevents the missed-call state, avoiding duplicate notifications.
+- Failed voicemail synchronization does not create a false missed-call notification.
+
 ## [0.5.4] - 2026-08-13
 
 ### Added

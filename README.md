@@ -2,7 +2,7 @@
 
 Direkter FRITZ!Box-Call-Monitor für Home Assistant über TCP-Port `1012`.
 
-> Entwicklungsstand: **v0.5.4**
+> Entwicklungsstand: **v0.5.5**
 
 ## Funktionen
 
@@ -233,6 +233,13 @@ custom_components/
 
 
 ## Benachrichtigungs-Automation
+
+Seit v0.5.5 wird außerdem ein vom Anrufbeantworter angenommener Anruf ohne
+hinterlassene Aufnahme nach zwei kurzen AB-Abgleichen als `Verpasster Anruf`
+klassifiziert. Dadurch greift derselbe `missed`-Trigger wie bei einem normalen
+verpassten Anruf. Eine echte Sprachnachricht löst dagegen weiterhin das
+`new_voicemail`-Ereignis aus.
+
 
 Seit v0.5.4 erzeugt FritzCallMonitor für eine tatsächlich neu erkannte
 AB-Sprachnachricht das Home-Assistant-Ereignis:
@@ -565,3 +572,14 @@ Audio-View werden nun ignoriert. Dadurch wird zuverlässig das Objekt mit
 - Bekannte Nachrichten-IDs werden persistent gespeichert.
 - Löschen oder normale Synchronisationen erzeugen keine
   `new_voicemail`-Benachrichtigung.
+
+
+## v0.5.5
+
+- AB-Anrufe ohne hinterlassene Aufnahme werden als verpasste Anrufe gemeldet.
+- Nach `DISCONNECT` erfolgen zwei AB-Abgleiche nach 3 und insgesamt 7 Sekunden.
+- Erst wenn keine passende Aufnahme existiert, wechselt
+  `sensor.fritzcallmonitor_anrufstatus` auf `Verpasster Anruf`.
+- Echte Voicemails erzeugen weiterhin nur `callmonitor_test_event` mit
+  `type: new_voicemail`; es entsteht keine zusätzliche Verpasst-Meldung.
+- Das Attribut `keine_ab_nachricht: true` kennzeichnet diesen Sonderfall.

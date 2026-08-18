@@ -421,16 +421,93 @@ class CallMonitorTestSensor(SensorEntity):
         ))
 
         if call.answered_by_answering_machine and self._answering_machine.enabled:
-            async def _delayed_ab_sync() -> None:
-                await asyncio.sleep(3)
-                await self.async_sync_answering_machine()
-
             self._entry.async_create_background_task(
                 self.hass,
-                _delayed_ab_sync(),
-                "FritzCallMonitor AB refresh after call",
+                self._finalize_answering_machine_call(
+                    call,
+                    connection_id,
+                    timestamp,
+                ),
+                "FritzCallMonitor AB finalize after call",
             )
 
+        self.async_write_ha_state()
+
+    def _has_matching_voicemail_for_call(
+        self,
+        stored_call: StoredCall,
+    ) -> bool:
+        """Return whether the loaded AB list contains a recording for this call."""
+        for message in self._answering_machine.message_objects:
+            matching_call = self._find_matching_answering_machine_call(
+                message
+            )
+            if (
+                matching_call is not None and
+                matching_call.call_id == stored_call.call_id
+            ):
+                return True
+
+        return False
+
+    async def _finalize_answering_machine_call(
+        self,
+        call: ActiveCall,
+        connection_id: str,
+        disconnected_at: datetime,
+    ) -> None:
+        """Classify an AB call without a recording as a missed call."""
+        stored_call = next(
+            (
+                item
+                for item in self._calls
+                if (
+                    item.status == "answering_machine" and
+                    item.caller == (
+                        call.caller or "unterdrückte Rufnummer"
+                    ) and
+                    item.timestamp == call.started_at.isoformat()
+                )
+            ),
+            None,
+        )
+        if stored_call is None:
+            return
+
+        # First refresh shortly after DISCONNECT.
+        await asyncio.sleep(3)
+        first_sync_ok = await self.async_sync_answering_machine()
+        if not first_sync_ok:
+            return
+
+        if self._has_matching_voicemail_for_call(stored_call):
+            return
+
+        # FRITZ!OS may publish a just-recorded message with a short delay.
+        # A second refresh prevents false "missed" notifications.
+        await asyncio.sleep(4)
+        second_sync_ok = await self.async_sync_answering_machine()
+        if not second_sync_ok:
+            return
+
+        if self._has_matching_voicemail_for_call(stored_call):
+            return
+
+        # The answering machine accepted the call, but no recording exists.
+        # Expose it as a missed call so existing HA automations notify.
+        self._state = "Verpasster Anruf"
+        self._attributes.update(
+            {
+                "ereignis": "missed",
+                "anrufer": call.caller or "unterdrückte Rufnummer",
+                "anrufer_name": call.caller_name,
+                "angerufene_nummer": call.called,
+                "verbindungs_id": connection_id,
+                "zeitpunkt": disconnected_at.isoformat(),
+                "vom_anrufbeantworter_angenommen": True,
+                "keine_ab_nachricht": True,
+            }
+        )
         self.async_write_ha_state()
 
     async def _async_detect_new_voicemails(self) -> list:
@@ -495,11 +572,11 @@ class CallMonitorTestSensor(SensorEntity):
             },
         )
 
-    async def async_sync_answering_machine(self) -> None:
+    async def async_sync_answering_machine(self) -> bool:
         """Synchronize voicemail metadata and detect newly added messages."""
         if not self._answering_machine.enabled:
             self._write_voicemail_state()
-            return
+            return False
 
         new_messages = []
 
@@ -520,15 +597,20 @@ class CallMonitorTestSensor(SensorEntity):
             )
             if self._voicemail_sensor is not None:
                 self._voicemail_sensor.set_error(str(error))
-        else:
-            if self._voicemail_sensor is not None:
-                self._voicemail_sensor.clear_error()
+
+            self._write_voicemail_state()
+            return False
+
+        if self._voicemail_sensor is not None:
+            self._voicemail_sensor.clear_error()
 
         self._write_voicemail_state()
 
         # Fire only after the sensor state contains the newly synchronized data.
         for message in new_messages:
             self._fire_new_voicemail_event(message)
+
+        return True
 
     async def async_sync_phonebook(self) -> None:
         """Manually synchronize the FRITZ!Box phonebooks."""
